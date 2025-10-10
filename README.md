@@ -16,6 +16,7 @@ A comprehensive IoT solution for ESP32 with Arduino framework, featuring WiFi co
 - **Dynamic Configuration**: MQTT settings can be configured via MQTT messages
 - **Topic Structure**: 
   - `esp32vault/{device_id}/status` - Device status and telemetry
+  - `esp32vault/{device_id}/signal/strenght` - WiFi signal strength (RSSI)
   - `esp32vault/{device_id}/config` - Configuration data
   - `esp32vault/{device_id}/cmd/#` - Command topics
 
@@ -153,6 +154,12 @@ Payload: {
   "mqtt_connected": true,
   "ota_enabled": true
 }
+```
+
+The device also publishes WiFi signal strength every 10 seconds to:
+```
+Topic: esp32vault/{device_id}/signal/strenght
+Payload: -45
 ```
 
 ## OTA Updates

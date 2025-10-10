@@ -13,8 +13,13 @@ OTAManager otaManager;
 unsigned long lastStatusUpdate = 0;
 const unsigned long STATUS_INTERVAL = 30000; // 30 seconds
 
+// Signal strength variables
+unsigned long lastSignalUpdate = 0;
+const unsigned long SIGNAL_INTERVAL = 10000; // 10 seconds
+
 void handleMQTTMessage(String topic, String payload);
 void publishDeviceInfo();
+void publishSignalStrength();
 void handleConfigCommand(const String& payload);
 
 void setup() {
@@ -59,6 +64,12 @@ void loop() {
         if (now - lastStatusUpdate > STATUS_INTERVAL) {
             lastStatusUpdate = now;
             publishDeviceInfo();
+        }
+        
+        // Periodic signal strength update
+        if (now - lastSignalUpdate > SIGNAL_INTERVAL) {
+            lastSignalUpdate = now;
+            publishSignalStrength();
         }
     }
     
@@ -138,6 +149,15 @@ void publishDeviceInfo() {
     serializeJson(doc, output);
     
     mqttManager.publishStatus(output);
+}
+
+void publishSignalStrength() {
+    if (!mqttManager.isConnected()) {
+        return;
+    }
+    
+    int rssi = WiFi.RSSI();
+    mqttManager.publishSignalStrength(rssi);
 }
 
 void handleConfigCommand(const String& payload) {

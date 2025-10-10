@@ -88,6 +88,14 @@ The device publishes status messages periodically (default: 30 seconds):
 }
 ```
 
+The device also publishes WiFi signal strength periodically (default: 10 seconds):
+
+```bash
+mosquitto_sub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/signal/strenght" -v
+```
+
+Signal strength is published as RSSI value (e.g., `-45`, `-67`). Lower negative values indicate stronger signal.
+
 ## Using Python with Paho MQTT
 
 Example Python script to send commands:
@@ -166,6 +174,7 @@ client.on('message', (topic, message) => {
 | Topic Pattern | Direction | Description |
 |--------------|-----------|-------------|
 | `esp32vault/{device_id}/status` | Device → Broker | Device status and telemetry |
+| `esp32vault/{device_id}/signal/strenght` | Device → Broker | WiFi signal strength (RSSI) |
 | `esp32vault/{device_id}/config` | Device → Broker | Configuration data |
 | `esp32vault/{device_id}/cmd/mqtt` | Broker → Device | Configure MQTT settings |
 | `esp32vault/{device_id}/cmd/ota` | Broker → Device | Enable/disable OTA |

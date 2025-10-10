@@ -47,6 +47,7 @@ public:
     
     void publishStatus(const String& status);
     void publishConfig(const String& config);
+    void publishSignalStrength(int rssi);
 };
 
 #endif // MQTT_MANAGER_H
