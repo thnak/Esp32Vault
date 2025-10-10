@@ -110,6 +110,11 @@ void MQTTManager::publishConfig(const String& config) {
     publish(topic, config, true);
 }
 
+void MQTTManager::publishSignalStrength(int rssi) {
+    String topic = baseTopic + "/signal/strenght";
+    publish(topic, String(rssi), false);
+}
+
 bool MQTTManager::reconnect() {
     Serial.print("Attempting MQTT connection...");
     
