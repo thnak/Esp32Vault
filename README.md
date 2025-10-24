@@ -247,6 +247,18 @@ pio run --target upload --upload-port ESP32-Vault-XXXXXXXX.local
 
 For detailed IO management examples and use cases, see [IO_USAGE_EXAMPLES.md](IO_USAGE_EXAMPLES.md).
 
+Quick start guide: [IO_QUICKSTART.md](IO_QUICKSTART.md)
+
+To test the implementation, run the provided test script:
+```bash
+# Set environment variables
+export MQTT_BROKER="your-broker.com"
+export DEVICE_ID="ESP32-Vault-XXXXXXXX"
+
+# Run test
+./test_io_management.sh
+```
+
 ## Dependencies
 
 - **espressif32**: ESP32 platform
