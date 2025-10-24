@@ -19,6 +19,8 @@ A comprehensive IoT solution for ESP32 with Arduino framework, featuring WiFi co
   - `esp32vault/{device_id}/signal/strenght` - WiFi signal strength (RSSI)
   - `esp32vault/{device_id}/config` - Configuration data
   - `esp32vault/{device_id}/cmd/#` - Command topics
+  - `esp32vault/{device_id}/cmd/io/#` - IO management topics
+  - `esp32vault/{device_id}/io/{pin}/state` - Pin state reports
 
 ### 3. OTA (Over-The-Air) Updates
 - **HTTP(S) OTA**: Firmware updates via HTTP/HTTPS download
@@ -26,10 +28,20 @@ A comprehensive IoT solution for ESP32 with Arduino framework, featuring WiFi co
 - **Integrity Verification**: Built-in binary verification (SHA256 support noted for future)
 - **Progress Monitoring**: Real-time update progress feedback via MQTT
 
-### 4. Configuration Management
+### 4. Dynamic IO Management
+- **Remote Pin Configuration**: Configure GPIO pins (input, output, analog, interrupt) via MQTT
+- **Pin Exclusion**: Server-managed exclusion list for protecting critical pins
+- **ISR-safe Event Queue**: FreeRTOS-based event queue for interrupt handling
+- **Trigger Operations**: Remote trigger for output pins (set, reset, pulse, toggle)
+- **State Reporting**: Automatic pin state reporting to configurable MQTT topics
+- **Persistent Configuration**: Pin configurations saved to NVS (optional)
+- **Debouncing**: Built-in debounce support for inputs and interrupts
+
+### 5. Configuration Management
 - **Local Storage**: WiFi credentials stored locally using Preferences
 - **Remote Configuration**: MQTT broker and OTA settings manageable via MQTT
 - **Factory Reset**: WiFi credentials can be cleared remotely
+- **IO Configuration**: Pin configurations and exclude lists persisted to NVS
 
 ## Project Structure
 
@@ -39,12 +51,14 @@ Esp32Vault/
 ├── include/                # Header files
 │   ├── WiFiManager.h      # WiFi management
 │   ├── MQTTManager.h      # MQTT client
-│   └── OTAManager.h       # OTA updates
+│   ├── OTAManager.h       # OTA updates
+│   └── InputManager.h     # IO management
 └── src/                   # Source files
     ├── main.cpp           # Main application
     ├── WiFiManager.cpp    # WiFi implementation
     ├── MQTTManager.cpp    # MQTT implementation
-    └── OTAManager.cpp     # OTA implementation
+    ├── OTAManager.cpp     # OTA implementation
+    └── InputManager.cpp   # IO implementation
 ```
 
 ## Getting Started
@@ -146,6 +160,60 @@ Payload: {
 }
 ```
 
+### Configure IO Pin
+```json
+Topic: esp32vault/{device_id}/cmd/io/config
+Payload: {
+  "pin": 13,
+  "mode": "output",
+  "report_topic": "esp32vault/{device_id}/io/13/state",
+  "persist": true,
+  "retain": false
+}
+```
+
+Modes: `output`, `input`, `input_pullup`, `analog`, `interrupt`
+
+For interrupt mode, additional parameters:
+```json
+{
+  "pin": 14,
+  "mode": "interrupt",
+  "edge": "change",
+  "debounce": 50,
+  "report_topic": "esp32vault/{device_id}/io/14/state",
+  "persist": true
+}
+```
+
+Edge types: `rising`, `falling`, `change`
+
+### Trigger Output Pin
+```json
+Topic: esp32vault/{device_id}/cmd/io/13/trigger
+Payload: set
+```
+
+Actions: `set` (HIGH), `reset` (LOW), `pulse`, `toggle`
+
+For pulse action with custom duration:
+```json
+Payload: {
+  "action": "pulse",
+  "pulse": 500
+}
+```
+
+### Set Pin Exclusion List
+```json
+Topic: esp32vault/{device_id}/cmd/io/exclude
+Payload: {
+  "pins": [0, 1, 3],
+  "ranges": [{"from": 6, "to": 11}],
+  "persist": true
+}
+```
+
 ## Device Status
 
 The device publishes status every 30 seconds to:
@@ -224,11 +292,28 @@ pio run
 # .pio/build/esp32dev/firmware.bin
 ```
 
+## IO Management Examples
+
+For detailed IO management examples and use cases, see [IO_USAGE_EXAMPLES.md](IO_USAGE_EXAMPLES.md).
+
+Quick start guide: [IO_QUICKSTART.md](IO_QUICKSTART.md)
+
+To test the implementation, run the provided test script:
+```bash
+# Set environment variables
+export MQTT_BROKER="your-broker.com"
+export DEVICE_ID="ESP32-Vault-XXXXXXXX"
+
+# Run test
+./test_io_management.sh
+```
+
 ## Dependencies
 
 - **espressif32**: ESP32 platform
 - **PubSubClient**: MQTT client library
 - **ArduinoJson**: JSON parsing and generation
+- **FreeRTOS**: Real-time operating system (included with ESP32)
 
 ## Configuration Storage
 

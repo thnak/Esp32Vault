@@ -5,22 +5,27 @@
 ESP32 Vault is designed as a modular IoT solution with three main components working together to provide a robust and configurable system.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         ESP32 Device                        │
-│                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │              │  │              │  │              │    │
-│  │ WiFiManager  │  │ MQTTManager  │  │ OTAManager   │    │
-│  │              │  │              │  │              │    │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘    │
-│         │                  │                  │            │
-│         └──────────────────┴──────────────────┘            │
-│                            │                               │
-│                    ┌───────▼────────┐                     │
-│                    │   main.cpp     │                     │
-│                    │  (Integration) │                     │
-│                    └────────────────┘                     │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                         ESP32 Device                             │
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│  │              │  │              │  │              │         │
+│  │ WiFiManager  │  │ MQTTManager  │  │ OTAManager   │         │
+│  │              │  │              │  │              │         │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘         │
+│         │                  │                  │                 │
+│         │         ┌────────┴────────┐         │                 │
+│         │         │                 │         │                 │
+│         │    ┌────▼─────┐    ┌──────▼────┐   │                 │
+│         │    │          │    │           │   │                 │
+│         │    │InputMgr  │    │  main.cpp │   │                 │
+│         │    │(FreeRTOS)│◄───┤Integration│   │                 │
+│         │    │          │    │           │   │                 │
+│         │    └──────────┘    └───────────┘   │                 │
+│         │                           │         │                 │
+│         └───────────────────────────┴─────────┘                 │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ## Component Descriptions
@@ -69,13 +74,23 @@ esp32vault/
   └── {device_id}/
       ├── status        (published by device)
       ├── config        (published by device)
+      ├── io/
+      │   └── {pin}/
+      │       └── state (published - pin state)
       ├── ota/
       │   └── status    (published by device - OTA progress)
       └── cmd/
-          ├── mqtt       (subscribed - configure broker)
+          ├── mqtt      (subscribed - configure broker)
+          ├── ota       (subscribed - enable OTA)
           ├── ota_update (subscribed - trigger OTA update)
-          ├── restart    (subscribed - restart device)
-          └── reset_wifi (subscribed - reset WiFi)
+          ├── restart   (subscribed - restart device)
+          ├── reset_wifi (subscribed - reset WiFi)
+          └── io/
+              ├── config    (subscribed - configure pin)
+              ├── exclude   (subscribed - set exclusion list)
+              └── {pin}/
+                  └── trigger (subscribed - trigger output)
+
 ```
 
 ### 3. OTAManager
@@ -105,6 +120,58 @@ MQTT Command Received (cmd/ota_update)
   │   └─→ Verify flash operation
   │
   └─→ Reboot with new firmware
+```
+
+### 4. InputManager
+
+**Purpose**: Manages dynamic GPIO pin configuration and monitoring via MQTT.
+
+**Features**:
+- Dynamic pin configuration (input, output, analog, interrupt)
+- ISR-safe event queue using FreeRTOS
+- Pin exclusion management for critical pins
+- Debounce support for inputs
+- Remote trigger operations (set, reset, pulse, toggle)
+- Automatic state reporting to MQTT
+- Persistent configuration storage in NVS
+
+**Architecture**:
+```
+┌─────────────────────────────────────────┐
+│         InputManager                    │
+│                                         │
+│  ┌──────────────┐  ┌───────────────┐  │
+│  │ Pin Configs  │  │ Exclude List  │  │
+│  │   (NVS)      │  │    (NVS)      │  │
+│  └──────────────┘  └───────────────┘  │
+│                                         │
+│  ┌──────────────────────────────────┐  │
+│  │   FreeRTOS Event Queue           │  │
+│  │   (ISR-safe, overwrite oldest)   │  │
+│  └──────────────────────────────────┘  │
+│              │                          │
+│              ▼                          │
+│  ┌──────────────────────────────────┐  │
+│  │   Worker Task                    │  │
+│  │   - Process events               │  │
+│  │   - Apply debounce               │  │
+│  │   - Publish to MQTT              │  │
+│  └──────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+**Flow**:
+```
+GPIO Interrupt
+  │
+  ├─→ ISR Handler (IRAM_ATTR)
+  │   └─→ Queue Event (ISR-safe)
+  │       └─→ If full, remove oldest
+  │
+  └─→ Worker Task receives event
+      ├─→ Apply debounce filter
+      ├─→ Update pin state
+      └─→ Publish to MQTT topic
 ```
 
 ## Data Flow
@@ -161,6 +228,10 @@ Loop:
 - `port`: MQTT broker port (default: 1883)
 - `user`: MQTT username (optional)
 - `password`: MQTT password (optional)
+
+**Namespace: "io"**
+- `pins`: JSON array of pin configurations
+- `exclude`: JSON object with excluded pins and ranges
 
 ## Communication Protocols
 
