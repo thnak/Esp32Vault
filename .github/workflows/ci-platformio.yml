@@ -44,7 +44,7 @@ jobs:
       - name: Build environment esp32dev
         run: |
           # Build the named environment from platformio.ini
-          pio run -e esp32dev -c
+          pio run -e esp32dev
 
       - name: Upload build artifacts
         if: success()
