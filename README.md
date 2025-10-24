@@ -50,12 +50,14 @@ Esp32Vault/
 ├── include/                # Header files
 │   ├── WiFiManager.h      # WiFi management
 │   ├── MQTTManager.h      # MQTT client
-│   └── OTAManager.h       # OTA updates
+│   ├── OTAManager.h       # OTA updates
+│   └── InputManager.h     # IO management
 └── src/                   # Source files
     ├── main.cpp           # Main application
     ├── WiFiManager.cpp    # WiFi implementation
     ├── MQTTManager.cpp    # MQTT implementation
-    └── OTAManager.cpp     # OTA implementation
+    ├── OTAManager.cpp     # OTA implementation
+    └── InputManager.cpp   # IO implementation
 ```
 
 ## Getting Started
@@ -241,11 +243,16 @@ Payload: -45
 pio run --target upload --upload-port ESP32-Vault-XXXXXXXX.local
 ```
 
+## IO Management Examples
+
+For detailed IO management examples and use cases, see [IO_USAGE_EXAMPLES.md](IO_USAGE_EXAMPLES.md).
+
 ## Dependencies
 
 - **espressif32**: ESP32 platform
 - **PubSubClient**: MQTT client library
 - **ArduinoJson**: JSON parsing and generation
+- **FreeRTOS**: Real-time operating system (included with ESP32)
 
 ## Configuration Storage
 
