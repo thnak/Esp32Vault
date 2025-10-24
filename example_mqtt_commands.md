@@ -23,13 +23,24 @@ mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/mqtt" -
 }'
 ```
 
-### 2. Enable OTA Updates
+### 2. Trigger OTA Update
 
-Enable OTA functionality:
+Trigger a firmware update via HTTP(S):
 
 ```bash
-mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/ota" -m "enable"
+mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/ota_update" -m '{
+  "version": "1.0.2",
+  "url": "http://example.com/firmware/esp32vault-v1.0.2.bin",
+  "integrity": "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+}'
 ```
+
+**Parameters:**
+- `version` (required): Version identifier for logging and tracking
+- `url` (required): HTTP(S) URL to download the firmware binary
+- `integrity` (optional): SHA256 hash for future verification (currently noted for enhancement)
+
+**Note:** The device will download the firmware, verify the binary format, flash it, and reboot automatically.
 
 ### 3. Restart Device
 
@@ -71,6 +82,14 @@ mosquitto_sub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/#" -v
 mosquitto_sub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/status" -v
 ```
 
+### Subscribe to OTA Status
+
+Monitor OTA update progress in real-time:
+
+```bash
+mosquitto_sub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/ota/status" -v
+```
+
 ## Expected Status Messages
 
 The device publishes status messages periodically (default: 30 seconds):
@@ -84,7 +103,51 @@ The device publishes status messages periodically (default: 30 seconds):
   "wifi_ssid": "YourNetwork",
   "ip_address": "192.168.1.100",
   "mqtt_connected": true,
-  "ota_enabled": true
+  "ota_update_in_progress": false
+}
+```
+
+### OTA Status Messages
+
+During an OTA update, the device publishes progress to `esp32vault/{device_id}/ota/status`:
+
+**Starting:**
+```json
+{
+  "status": "starting",
+  "version": "1.0.2"
+}
+```
+
+**Downloading:**
+```json
+{
+  "status": "downloading"
+}
+```
+
+**Progress Updates (every 10%):**
+```json
+{
+  "status": "updating",
+  "progress": 50
+}
+```
+
+**Success:**
+```json
+{
+  "status": "success",
+  "message": "Update completed, rebooting..."
+}
+```
+
+**Error:**
+```json
+{
+  "status": "error",
+  "error_code": -104,
+  "message": "HTTP error description"
 }
 ```
 
@@ -122,8 +185,13 @@ mqtt_config = {
 }
 client.publish(f"{BASE_TOPIC}/cmd/mqtt", json.dumps(mqtt_config))
 
-# Enable OTA
-client.publish(f"{BASE_TOPIC}/cmd/ota", "enable")
+# Trigger OTA update
+ota_update = {
+    "version": "1.0.2",
+    "url": "http://example.com/firmware.bin",
+    "integrity": "sha256:abcdef..."
+}
+client.publish(f"{BASE_TOPIC}/cmd/ota_update", json.dumps(ota_update))
 
 # Subscribe to status
 def on_message(client, userdata, msg):
@@ -159,6 +227,14 @@ client.on('connect', () => {
     };
     
     client.publish(`${BASE_TOPIC}/cmd/mqtt`, JSON.stringify(mqttConfig));
+    
+    // Trigger OTA update
+    const otaUpdate = {
+        version: '1.0.2',
+        url: 'http://example.com/firmware.bin',
+        integrity: 'sha256:abcdef...'
+    };
+    client.publish(`${BASE_TOPIC}/cmd/ota_update`, JSON.stringify(otaUpdate));
     
     // Subscribe to status
     client.subscribe(`${BASE_TOPIC}/status`);
@@ -278,9 +354,10 @@ mosquitto_sub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/io/+/state"
 |--------------|-----------|-------------|
 | `esp32vault/{device_id}/status` | Device → Broker | Device status and telemetry |
 | `esp32vault/{device_id}/signal/strenght` | Device → Broker | WiFi signal strength (RSSI) |
+| `esp32vault/{device_id}/ota/status` | Device → Broker | OTA update progress and status |
 | `esp32vault/{device_id}/config` | Device → Broker | Configuration data |
 | `esp32vault/{device_id}/cmd/mqtt` | Broker → Device | Configure MQTT settings |
-| `esp32vault/{device_id}/cmd/ota` | Broker → Device | Enable/disable OTA |
+| `esp32vault/{device_id}/cmd/ota_update` | Broker → Device | Trigger OTA firmware update |
 | `esp32vault/{device_id}/cmd/restart` | Broker → Device | Restart device |
 | `esp32vault/{device_id}/cmd/reset_wifi` | Broker → Device | Reset WiFi credentials |
 | `esp32vault/{device_id}/config/set` | Broker → Device | Update device configuration |

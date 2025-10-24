@@ -77,9 +77,12 @@ esp32vault/
       ├── io/
       │   └── {pin}/
       │       └── state (published - pin state)
+      ├── ota/
+      │   └── status    (published by device - OTA progress)
       └── cmd/
           ├── mqtt      (subscribed - configure broker)
           ├── ota       (subscribed - enable OTA)
+          ├── ota_update (subscribed - trigger OTA update)
           ├── restart   (subscribed - restart device)
           ├── reset_wifi (subscribed - reset WiFi)
           └── io/
@@ -87,29 +90,36 @@ esp32vault/
               ├── exclude   (subscribed - set exclusion list)
               └── {pin}/
                   └── trigger (subscribed - trigger output)
+
 ```
 
 ### 3. OTAManager
 
-**Purpose**: Enables Over-The-Air firmware updates.
+**Purpose**: Enables Over-The-Air firmware updates via HTTP(S).
 
 **Features**:
-- Network-based firmware updates
-- Progress monitoring
+- HTTP(S)-based firmware downloads
+- MQTT-triggered updates
+- Real-time progress monitoring via MQTT
+- Automatic binary verification
 - Error handling and recovery
-- Optional password protection
+- Support for firmware integrity checking (SHA256 noted for future)
 
 **Update Process**:
 ```
-OTA Initiate
+MQTT Command Received (cmd/ota_update)
   │
-  ├─→ Receive new firmware
-  │   └─→ Validate
-  │       ├─→ Valid → Flash to memory
-  │       │   └─→ Verify → Restart
-  │       └─→ Invalid → Abort
+  ├─→ Parse JSON payload (version, url, integrity)
+  │   └─→ Validate parameters
   │
-  └─→ Resume normal operation
+  ├─→ Download firmware via HTTP(S)
+  │   ├─→ Report progress via MQTT (every 10%)
+  │   └─→ Verify binary format
+  │
+  ├─→ Flash to memory
+  │   └─→ Verify flash operation
+  │
+  └─→ Reboot with new firmware
 ```
 
 ### 4. InputManager
@@ -242,9 +252,10 @@ Loop:
 
 ### OTA
 
-- **Protocol**: ArduinoOTA (mDNS + HTTP)
-- **Port**: 3232 (default)
-- **Authentication**: Optional password
+- **Protocol**: HTTP(S) download + ESP32 Update library
+- **Trigger**: MQTT command-based
+- **Authentication**: Server-side (HTTP Basic Auth, API keys, etc.)
+- **Progress Reporting**: Via MQTT publish
 
 ## Security Considerations
 
@@ -254,11 +265,12 @@ Loop:
 - Default AP password (should be changed)
 
 ### Recommended Enhancements
-1. **TLS/SSL**: Enable secure MQTT (port 8883)
-2. **Certificate Validation**: Verify broker certificates
-3. **OTA Password**: Set strong OTA password
+1. **TLS/SSL**: Enable secure MQTT (port 8883) and HTTPS for OTA
+2. **Certificate Validation**: Verify broker and firmware server certificates
+3. **SHA256 Verification**: Implement full SHA256 integrity checking for OTA
 4. **Unique AP Password**: Generate unique AP password per device
 5. **Message Encryption**: Encrypt sensitive MQTT payloads
+6. **OTA Authorization**: Implement token-based authorization for firmware downloads
 
 ## Extensibility
 

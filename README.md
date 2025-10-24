@@ -23,9 +23,10 @@ A comprehensive IoT solution for ESP32 with Arduino framework, featuring WiFi co
   - `esp32vault/{device_id}/io/{pin}/state` - Pin state reports
 
 ### 3. OTA (Over-The-Air) Updates
-- **ArduinoOTA**: Built-in OTA update support
-- **Network-based Updates**: Update firmware over WiFi
-- **Progress Monitoring**: Real-time update progress feedback
+- **HTTP(S) OTA**: Firmware updates via HTTP/HTTPS download
+- **MQTT-Controlled**: Triggered by MQTT commands with update URL
+- **Integrity Verification**: Built-in binary verification (SHA256 support noted for future)
+- **Progress Monitoring**: Real-time update progress feedback via MQTT
 
 ### 4. Dynamic IO Management
 - **Remote Pin Configuration**: Configure GPIO pins (input, output, analog, interrupt) via MQTT
@@ -38,7 +39,7 @@ A comprehensive IoT solution for ESP32 with Arduino framework, featuring WiFi co
 
 ### 5. Configuration Management
 - **Local Storage**: WiFi credentials stored locally using Preferences
-- **Remote Configuration**: MQTT broker settings manageable via MQTT
+- **Remote Configuration**: MQTT broker and OTA settings manageable via MQTT
 - **Factory Reset**: WiFi credentials can be cleared remotely
 - **IO Configuration**: Pin configurations and exclude lists persisted to NVS
 
@@ -127,11 +128,17 @@ Payload: {
 }
 ```
 
-### Enable OTA
+### Trigger OTA Update
+```json
+Topic: esp32vault/{device_id}/cmd/ota_update
+Payload: {
+  "version": "1.0.2",
+  "url": "http://example.com/firmware.bin",
+  "integrity": "sha256:abcdef1234567890..."
+}
 ```
-Topic: esp32vault/{device_id}/cmd/ota
-Payload: enable
-```
+
+Note: The `integrity` field is optional. SHA256 verification is noted for future enhancement. The ESP32 Update library provides built-in binary format verification.
 
 ### Restart Device
 ```
@@ -220,7 +227,7 @@ Payload: {
   "wifi_ssid": "YourNetwork",
   "ip_address": "192.168.1.100",
   "mqtt_connected": true,
-  "ota_enabled": true
+  "ota_update_in_progress": false
 }
 ```
 
@@ -230,17 +237,59 @@ Topic: esp32vault/{device_id}/signal/strenght
 Payload: -45
 ```
 
+During OTA updates, progress is published to:
+```
+Topic: esp32vault/{device_id}/ota/status
+Payload: {
+  "status": "downloading|updating|success|error",
+  "progress": 75,
+  "version": "1.0.2",
+  "message": "..."
+}
+```
+
 ## OTA Updates
 
-### Using Arduino IDE
-1. Ensure device is connected to same network as your computer
-2. In Arduino IDE, go to Tools > Port
-3. Select the network port (ESP32-Vault-XXXXXXXX at x.x.x.x)
-4. Upload your sketch
+OTA updates are now performed via HTTP(S) and triggered through MQTT commands. This provides better security and flexibility compared to the previous ArduinoOTA implementation.
 
-### Using PlatformIO
+### Performing an OTA Update
+
+1. **Host your firmware**: Upload your compiled `.bin` firmware file to an HTTP(S) server
+2. **Send MQTT command**: Publish to the OTA update topic:
+
 ```bash
-pio run --target upload --upload-port ESP32-Vault-XXXXXXXX.local
+mosquitto_pub -h your-broker.com \
+  -t "esp32vault/{device_id}/cmd/ota_update" \
+  -m '{
+    "version": "1.0.2",
+    "url": "http://example.com/firmware/esp32vault-v1.0.2.bin",
+    "integrity": "sha256:your-sha256-hash-here"
+  }'
+```
+
+3. **Monitor progress**: Subscribe to the OTA status topic:
+
+```bash
+mosquitto_sub -h your-broker.com \
+  -t "esp32vault/{device_id}/ota/status" -v
+```
+
+The device will:
+- Download the firmware from the specified URL
+- Verify the binary format
+- Flash the new firmware
+- Automatically reboot with the new version
+
+### Building Firmware Binary
+
+To create a firmware binary for OTA updates:
+
+```bash
+# Build the project
+pio run
+
+# The firmware binary will be at:
+# .pio/build/esp32dev/firmware.bin
 ```
 
 ## IO Management Examples

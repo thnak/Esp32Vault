@@ -230,19 +230,34 @@ mosquitto_pub -h localhost \
 - Device publishes "wifi_reset" to status
 - Device restarts in AP mode
 
-### Test 4.3: Enable OTA Command
+### Test 4.3: Trigger OTA Update Command
+
+**Prerequisites**: 
+- Firmware binary file available on HTTP server
+- Calculate SHA256 hash: `sha256sum firmware.bin`
 
 **Steps**:
 ```bash
 mosquitto_pub -h localhost \
-  -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/ota" \
-  -m "enable"
+  -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/ota_update" \
+  -m '{
+    "version": "1.0.2",
+    "url": "http://your-server.com/firmware.bin",
+    "integrity": "sha256:your-hash-here"
+  }'
 ```
 
 **Expected Result**:
-- Serial monitor shows: "OTA Ready"
-- Device publishes "ota_enabled" to status
-- OTA hostname announced on network
+- Serial monitor shows: "Starting OTA Update"
+- Device publishes progress to `ota/status` topic
+- Firmware downloads and flashes
+- Device reboots with new firmware
+
+**Monitor Progress**:
+```bash
+mosquitto_sub -h localhost \
+  -t "esp32vault/ESP32-Vault-XXXXXXXX/ota/status" -v
+```
 
 ### Test 4.4: Update MQTT Configuration
 
@@ -264,49 +279,93 @@ mosquitto_pub -h localhost \
 
 ## 5. OTA Update Tests
 
-### Test 5.1: OTA Discovery
-
-**Prerequisites**: OTA enabled (Test 4.3)
+### Test 5.1: Build and Prepare Firmware Binary
 
 **Steps**:
-```bash
-# List available OTA devices
-pio device list --mdns
-```
-
-**Expected Result**:
-- Device appears in list: `ESP32-Vault-XXXXXXXX.local`
-
-### Test 5.2: OTA Firmware Update
-
-**Steps**:
-1. Make a small code change (e.g., add Serial.println)
+1. Make a small code change (e.g., add Serial.println("Version 1.0.2"))
 2. Build project: `pio run`
-3. Upload via OTA:
+3. Locate firmware binary: `.pio/build/esp32dev/firmware.bin`
+4. Calculate SHA256 hash:
 ```bash
-pio run --target upload --upload-port ESP32-Vault-XXXXXXXX.local
+sha256sum .pio/build/esp32dev/firmware.bin
 ```
+5. Host the binary on a web server (can be local HTTP server for testing)
 
-**Expected Result**:
-```
-Start updating sketch
-Progress: 100%
-End
-```
-- Device restarts with new firmware
-- New code executes (check serial monitor)
+### Test 5.2: HTTP OTA Update via MQTT
 
-### Test 5.3: OTA Update Failure Handling
+**Prerequisites**: 
+- Firmware binary hosted on HTTP server
+- ESP32 connected to WiFi and MQTT
 
 **Steps**:
-1. Start OTA update
-2. Disconnect ESP32 from power during upload (simulate failure)
-3. Reconnect power
+1. Subscribe to OTA status:
+```bash
+mosquitto_sub -h localhost \
+  -t "esp32vault/ESP32-Vault-XXXXXXXX/ota/status" -v
+```
+
+2. In another terminal, trigger OTA update:
+```bash
+mosquitto_pub -h localhost \
+  -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/ota_update" \
+  -m '{
+    "version": "1.0.2",
+    "url": "http://192.168.1.100:8000/firmware.bin",
+    "integrity": "sha256:your-actual-hash"
+  }'
+```
 
 **Expected Result**:
-- Device boots with previous firmware (rollback)
-- No boot loops
-- Device operates normally
+- Status messages published to `ota/status`:
+  - `{"status":"starting","version":"1.0.2"}`
+  - `{"status":"downloading"}`
+  - `{"status":"updating","progress":10}` ... `{"progress":100}`
+  - `{"status":"success","message":"Update completed, rebooting..."}`
+- Serial monitor shows download progress
+- Device reboots automatically
+- New code executes (verify with serial output)
+
+### Test 5.3: OTA Update with Invalid URL
+
+**Steps**:
+```bash
+mosquitto_pub -h localhost \
+  -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/ota_update" \
+  -m '{
+    "version": "1.0.3",
+    "url": "http://invalid-server.com/firmware.bin"
+  }'
+```
+
+**Expected Result**:
+- Error message published to `ota/status`
+- Serial monitor shows connection error
+- Device continues normal operation (no crash)
+
+### Test 5.4: OTA Update with Missing Fields
+
+**Steps**:
+```bash
+mosquitto_pub -h localhost \
+  -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/ota_update" \
+  -m '{
+    "version": "1.0.3"
+  }'
+```
+
+**Expected Result**:
+- Error message: "Missing required fields: version and url"
+- Device continues normal operation
+
+### Test 5.5: Concurrent OTA Update Prevention
+
+**Steps**:
+1. Start an OTA update
+2. While update is in progress, send another OTA update command
+
+**Expected Result**:
+- Second command receives error: "Update already in progress"
+- First update continues normally
 
 ## 6. Integration Tests
 
@@ -316,13 +375,13 @@ End
 1. Upload firmware to fresh ESP32
 2. Configure WiFi via web interface
 3. Configure MQTT via MQTT command
-4. Enable OTA via MQTT command
+4. Trigger OTA update via MQTT command (optional)
 
 **Expected Result**:
 - All features operational
 - Status messages publishing
 - Commands responding
-- OTA available
+- OTA updates available on demand
 
 ### Test 6.2: Network Disconnection Recovery
 
@@ -468,13 +527,16 @@ Use this checklist to verify all tests:
 ### MQTT Commands
 - [ ] Restart command works
 - [ ] Reset WiFi command works
-- [ ] Enable OTA command works
+- [ ] Trigger OTA update command works
 - [ ] MQTT config update works
 
 ### OTA Updates
-- [ ] OTA device discovered
-- [ ] Firmware update succeeds
-- [ ] OTA failure handling
+- [ ] Firmware binary builds successfully
+- [ ] HTTP OTA update via MQTT succeeds
+- [ ] OTA progress reporting works
+- [ ] Invalid URL handling works
+- [ ] Missing fields validation works
+- [ ] Concurrent update prevention works
 
 ### Integration
 - [ ] Full system startup
