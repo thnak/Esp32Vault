@@ -169,6 +169,109 @@ client.on('message', (topic, message) => {
 });
 ```
 
+## IO Management Commands
+
+### 6. Configure Output Pin
+
+Configure a pin as output:
+
+```bash
+mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/config" -m '{
+  "pin": 13,
+  "mode": "output",
+  "report_topic": "esp32vault/ESP32-Vault-XXXXXXXX/io/13/state",
+  "persist": true,
+  "retain": false
+}'
+```
+
+### 7. Configure Input Pin with Interrupt
+
+Configure a pin as interrupt input:
+
+```bash
+mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/config" -m '{
+  "pin": 14,
+  "mode": "interrupt",
+  "edge": "change",
+  "debounce": 50,
+  "report_topic": "esp32vault/ESP32-Vault-XXXXXXXX/io/14/state",
+  "persist": true,
+  "retain": false
+}'
+```
+
+### 8. Configure Analog Input
+
+Configure a pin for analog reading with periodic reporting:
+
+```bash
+mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/config" -m '{
+  "pin": 36,
+  "mode": "analog",
+  "interval": 5000,
+  "report_topic": "esp32vault/ESP32-Vault-XXXXXXXX/io/36/state",
+  "persist": true,
+  "retain": false
+}'
+```
+
+### 9. Trigger Output Pin
+
+Set pin HIGH:
+```bash
+mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/13/trigger" -m "set"
+```
+
+Set pin LOW:
+```bash
+mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/13/trigger" -m "reset"
+```
+
+Toggle pin:
+```bash
+mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/13/trigger" -m "toggle"
+```
+
+Pulse pin (100ms default):
+```bash
+mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/13/trigger" -m "pulse"
+```
+
+Pulse pin with custom duration:
+```bash
+mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/13/trigger" -m '{
+  "action": "pulse",
+  "pulse": 500
+}'
+```
+
+### 10. Set Pin Exclusion List
+
+Exclude specific pins from configuration:
+
+```bash
+mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/exclude" -m '{
+  "pins": [0, 1, 3],
+  "ranges": [{"from": 6, "to": 11}],
+  "persist": true
+}'
+```
+
+### 11. Subscribe to Pin State
+
+Subscribe to a specific pin state:
+
+```bash
+mosquitto_sub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/io/14/state" -v
+```
+
+Subscribe to all pin states:
+
+```bash
+mosquitto_sub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/io/+/state" -v
+```
+
 ## Topic Structure Reference
 
 | Topic Pattern | Direction | Description |
@@ -181,6 +284,10 @@ client.on('message', (topic, message) => {
 | `esp32vault/{device_id}/cmd/restart` | Broker → Device | Restart device |
 | `esp32vault/{device_id}/cmd/reset_wifi` | Broker → Device | Reset WiFi credentials |
 | `esp32vault/{device_id}/config/set` | Broker → Device | Update device configuration |
+| `esp32vault/{device_id}/cmd/io/config` | Broker → Device | Configure IO pin |
+| `esp32vault/{device_id}/cmd/io/exclude` | Broker → Device | Set pin exclusion list |
+| `esp32vault/{device_id}/cmd/io/{pin}/trigger` | Broker → Device | Trigger output pin |
+| `esp32vault/{device_id}/io/{pin}/state` | Device → Broker | Pin state report |
 
 ## Security Best Practices
 

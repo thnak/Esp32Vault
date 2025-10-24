@@ -5,6 +5,54 @@ All notable changes to ESP32 Vault will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-10-24
+
+### Added
+
+#### Dynamic IO Management
+- **InputManager**: New component for remote GPIO management via MQTT
+  - Dynamic pin configuration (output, input, input_pullup, analog, interrupt)
+  - Remote trigger operations (set, reset, pulse, toggle)
+  - Pin exclusion management for protecting critical pins
+  - ISR-safe event queue using FreeRTOS
+  - Automatic state reporting to configurable MQTT topics
+  - Persistent configuration storage in NVS
+  - Debounce support for inputs and interrupts
+  - Periodic reporting for analog inputs
+  - On-change reporting for digital inputs and interrupts
+
+#### New MQTT Topics
+- `esp32vault/{device_id}/cmd/io/config` - Configure GPIO pins
+- `esp32vault/{device_id}/cmd/io/exclude` - Set pin exclusion list
+- `esp32vault/{device_id}/cmd/io/{pin}/trigger` - Trigger output operations
+- `esp32vault/{device_id}/io/{pin}/state` - Pin state reports
+
+#### Features
+- **Reserved Pins Protection**: Default exclusion for SPI flash pins (6-11)
+- **Custom Exclusion Lists**: Server-managed pin exclusion with ranges support
+- **ISR-safe Queue**: FreeRTOS queue with overwrite-oldest strategy when full
+- **Worker Task**: Dedicated FreeRTOS task for event processing
+- **Interrupt Support**: Edge detection (rising, falling, change) with debounce
+- **Analog Reading**: ADC support with configurable reporting intervals
+- **Trigger Actions**: Set HIGH, set LOW, pulse, toggle for output pins
+- **Report Topics**: Mandatory report_topic for each configured pin
+- **Persistence**: Optional NVS storage for pin configurations and exclusion lists
+
+#### Documentation
+- Updated README.md with IO management features and examples
+- Updated ARCHITECTURE.md with InputManager component details
+- Updated example_mqtt_commands.md with comprehensive IO command examples
+- Added IO management flow diagrams
+
+### Technical Details
+- FreeRTOS event queue size: 32 events
+- Default debounce time: 50ms
+- Default pulse width: 100ms
+- ISR handlers use IRAM_ATTR for fast interrupt response
+- Worker task stack size: 4096 bytes
+- Worker task priority: 5
+- Memory usage increase: ~10KB RAM, ~40KB Flash
+
 ## [1.0.0] - 2024-10-08
 
 ### Added
