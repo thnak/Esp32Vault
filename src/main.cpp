@@ -2,12 +2,14 @@
 #include "WiFiManager.h"
 #include "MQTTManager.h"
 #include "OTAManager.h"
+#include "InputManager.h"
 #include <ArduinoJson.h>
 
 // Manager instances
 WiFiManager wifiManager;
 MQTTManager mqttManager;
 OTAManager otaManager;
+InputManager inputManager;
 
 // Status variables
 unsigned long lastStatusUpdate = 0;
@@ -43,6 +45,10 @@ void setup() {
         // Initialize OTA
         Serial.println("Initializing OTA...");
         otaManager.begin();
+        
+        // Initialize Input Manager
+        Serial.println("Initializing Input Manager...");
+        inputManager.begin(&mqttManager);
     }
     
     Serial.println("\n=================================");
@@ -58,6 +64,7 @@ void loop() {
     if (wifiManager.isConnected() && !wifiManager.isAPMode()) {
         mqttManager.loop();
         otaManager.loop();
+        inputManager.loop();
         
         // Periodic status update
         unsigned long now = millis();
@@ -125,6 +132,81 @@ void handleMQTTMessage(String topic, String payload) {
         mqttManager.publishStatus("wifi_reset");
         delay(1000);
         ESP.restart();
+    }
+    // Handle IO configuration
+    else if (topic.endsWith("/cmd/io/config")) {
+        StaticJsonDocument<512> doc;
+        DeserializationError error = deserializeJson(doc, payload);
+        
+        if (!error) {
+            if (inputManager.configurePin(doc)) {
+                mqttManager.publishStatus("io_config_updated");
+                Serial.println("IO configuration updated via MQTT");
+            } else {
+                mqttManager.publishStatus("io_config_failed");
+                Serial.println("IO configuration failed");
+            }
+        }
+    }
+    // Handle IO exclude list
+    else if (topic.endsWith("/cmd/io/exclude")) {
+        StaticJsonDocument<512> doc;
+        DeserializationError error = deserializeJson(doc, payload);
+        
+        if (!error) {
+            std::vector<uint8_t> pins;
+            std::vector<std::pair<uint8_t, uint8_t>> ranges;
+            bool persist = doc["persist"] | false;
+            
+            JsonArray pinsArray = doc["pins"];
+            for (JsonVariant pin : pinsArray) {
+                pins.push_back(pin.as<uint8_t>());
+            }
+            
+            JsonArray rangesArray = doc["ranges"];
+            for (JsonVariant rangeVariant : rangesArray) {
+                JsonObject rangeObj = rangeVariant.as<JsonObject>();
+                uint8_t from = rangeObj["from"];
+                uint8_t to = rangeObj["to"];
+                ranges.push_back(std::make_pair(from, to));
+            }
+            
+            if (inputManager.setExcludeList(pins, ranges, persist)) {
+                mqttManager.publishStatus("io_exclude_updated");
+                Serial.println("IO exclude list updated via MQTT");
+            }
+        }
+    }
+    // Handle IO trigger - match pattern /cmd/io/{pin}/trigger
+    else if (topic.indexOf("/cmd/io/") >= 0 && topic.endsWith("/trigger")) {
+        // Extract pin number from topic
+        int startIdx = topic.indexOf("/cmd/io/") + 8;
+        int endIdx = topic.indexOf("/trigger");
+        String pinStr = topic.substring(startIdx, endIdx);
+        uint8_t pin = pinStr.toInt();
+        
+        // Parse payload for action
+        StaticJsonDocument<128> doc;
+        DeserializationError error = deserializeJson(doc, payload);
+        
+        String action;
+        uint16_t pulseWidth = 100;
+        
+        if (!error && doc.is<JsonObject>()) {
+            action = doc["action"] | "set";
+            pulseWidth = doc["pulse"] | 100;
+        } else {
+            // Payload is plain text action
+            action = payload;
+        }
+        
+        if (inputManager.triggerPin(pin, action, pulseWidth)) {
+            mqttManager.publishStatus("io_trigger_success");
+            Serial.println("IO trigger executed on pin " + String(pin));
+        } else {
+            mqttManager.publishStatus("io_trigger_failed");
+            Serial.println("IO trigger failed on pin " + String(pin));
+        }
     }
 }
 
