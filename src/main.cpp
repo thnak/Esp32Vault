@@ -21,6 +21,7 @@ void handleMQTTMessage(String topic, String payload);
 void publishDeviceInfo();
 void publishSignalStrength();
 void handleConfigCommand(const String& payload);
+void publishOTAStatus(const String& status);
 
 void setup() {
     Serial.begin(115200);
@@ -40,9 +41,11 @@ void setup() {
         mqttManager.begin();
         mqttManager.setCallback(handleMQTTMessage);
         
-        // Initialize OTA
+        // Initialize OTA with callback for status publishing
         Serial.println("Initializing OTA...");
-        otaManager.begin();
+        String deviceId = "ESP32-Vault-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+        otaManager.begin(deviceId);
+        otaManager.setStatusCallback(publishOTAStatus);
     }
     
     Serial.println("\n=================================");
@@ -54,10 +57,9 @@ void loop() {
     // Handle WiFi Manager
     wifiManager.loop();
     
-    // Only run MQTT and OTA if WiFi is connected and not in AP mode
+    // Only run MQTT if WiFi is connected and not in AP mode
     if (wifiManager.isConnected() && !wifiManager.isAPMode()) {
         mqttManager.loop();
-        otaManager.loop();
         
         // Periodic status update
         unsigned long now = millis();
@@ -104,14 +106,9 @@ void handleMQTTMessage(String topic, String payload) {
             }
         }
     }
-    // Handle OTA trigger
-    else if (topic.endsWith("/cmd/ota")) {
-        if (payload == "enable") {
-            if (!otaManager.isEnabled()) {
-                otaManager.begin();
-            }
-            mqttManager.publishStatus("ota_enabled");
-        }
+    // Handle OTA update command
+    else if (topic.endsWith("/cmd/ota_update")) {
+        otaManager.handleUpdateCommand(payload);
     }
     // Handle restart command
     else if (topic.endsWith("/cmd/restart")) {
@@ -143,7 +140,7 @@ void publishDeviceInfo() {
     doc["wifi_ssid"] = WiFi.SSID();
     doc["ip_address"] = WiFi.localIP().toString();
     doc["mqtt_connected"] = mqttManager.isConnected();
-    doc["ota_enabled"] = otaManager.isEnabled();
+    doc["ota_update_in_progress"] = otaManager.isUpdateInProgress();
     
     String output;
     serializeJson(doc, output);
@@ -174,5 +171,13 @@ void handleConfigCommand(const String& payload) {
         mqttManager.publishStatus("config_updated");
     } else {
         Serial.println("Failed to parse config JSON");
+    }
+}
+
+void publishOTAStatus(const String& status) {
+    if (mqttManager.isConnected()) {
+        String deviceId = "ESP32-Vault-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+        String topic = "esp32vault/" + deviceId + "/ota/status";
+        mqttManager.publish(topic, status);
     }
 }
