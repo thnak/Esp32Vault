@@ -42,7 +42,11 @@ void WiFiManager::begin() {
 
 void WiFiManager::loop() {
     if (server != nullptr) {
+        // Handle incoming HTTP requests
+        // Call handleClient() to process pending requests
         server->handleClient();
+        // Minimal delay to prevent overwhelming the CPU and WiFi stack
+        delay(1);
     }
 }
 
