@@ -81,9 +81,15 @@ void loop() {
             lastSignalUpdate = now;
             publishSignalStrength();
         }
+        
+        delay(10);
+    } else if (wifiManager.isAPMode()) {
+        // In AP mode (config portal), use minimal delay for better web server responsiveness
+        delay(1);
+    } else {
+        // Not connected and not in AP mode, use normal delay
+        delay(10);
     }
-    
-    delay(10);
 }
 
 void handleMQTTMessage(String topic, String payload) {

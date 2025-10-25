@@ -42,7 +42,10 @@ void WiFiManager::begin() {
 
 void WiFiManager::loop() {
     if (server != nullptr) {
+        // Call handleClient() multiple times for better responsiveness
+        // This is especially important in AP mode when serving the config portal
         server->handleClient();
+        delay(1); // Small delay to allow WiFi stack to process packets
     }
 }
 
