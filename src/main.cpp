@@ -60,7 +60,7 @@ void setup() {
 }
 
 void loop() {
-    // Handle WiFi Manager
+    // Handle WiFi Manager (includes 1ms delay internally)
     wifiManager.loop();
     
     // Only run MQTT if WiFi is connected and not in AP mode
@@ -82,13 +82,15 @@ void loop() {
             publishSignalStrength();
         }
         
-        delay(10);
+        // Additional delay for normal operation (total ~10ms with WiFiManager delay)
+        delay(9);
     } else if (wifiManager.isAPMode()) {
-        // In AP mode (config portal), use minimal delay for better web server responsiveness
-        delay(1);
+        // In AP mode (config portal), WiFiManager's 1ms delay is sufficient
+        // This ensures web server gets called ~1000 times per second for responsiveness
+        // No additional delay needed
     } else {
         // Not connected and not in AP mode, use normal delay
-        delay(10);
+        delay(9);
     }
 }
 
