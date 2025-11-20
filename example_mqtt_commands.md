@@ -23,7 +23,24 @@ mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/mqtt" -
 }'
 ```
 
-### 2. Trigger OTA Update
+### 2. Update WiFi Credentials
+
+Update the WiFi network credentials (device will restart):
+
+```bash
+mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/wifi" -m '{
+  "ssid": "YourWiFiSSID",
+  "password": "YourWiFiPassword"
+}'
+```
+
+**Parameters:**
+- `ssid` (required): WiFi network SSID
+- `password` (required): WiFi network password
+
+**Note:** The device will save the credentials and restart automatically. If connection fails, it will attempt to connect to the default hotspot (`EspSetup`).
+
+### 3. Trigger OTA Update
 
 Trigger a firmware update via HTTP(S):
 
@@ -50,15 +67,15 @@ Restart the ESP32:
 mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/restart" -m "1"
 ```
 
-### 4. Reset WiFi Credentials
+### 5. Reset WiFi Credentials
 
-Clear saved WiFi credentials (device will restart in AP mode):
+Clear saved WiFi credentials (device will restart and connect to default hotspot):
 
 ```bash
 mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/reset_wifi" -m "1"
 ```
 
-### 5. Update Configuration
+### 6. Update Configuration
 
 Update device configuration parameters:
 
@@ -247,7 +264,7 @@ client.on('message', (topic, message) => {
 
 ## IO Management Commands
 
-### 6. Configure Output Pin
+### 7. Configure Output Pin
 
 Configure a pin as output:
 
@@ -261,7 +278,7 @@ mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/conf
 }'
 ```
 
-### 7. Configure Input Pin with Interrupt
+### 8. Configure Input Pin with Interrupt
 
 Configure a pin as interrupt input:
 
@@ -277,7 +294,7 @@ mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/conf
 }'
 ```
 
-### 8. Configure Analog Input
+### 9. Configure Analog Input
 
 Configure a pin for analog reading with periodic reporting:
 
@@ -292,7 +309,7 @@ mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/conf
 }'
 ```
 
-### 9. Trigger Output Pin
+### 10. Trigger Output Pin
 
 Set pin HIGH:
 ```bash
@@ -322,7 +339,7 @@ mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/13/t
 }'
 ```
 
-### 10. Set Pin Exclusion List
+### 11. Set Pin Exclusion List
 
 Exclude specific pins from configuration:
 
@@ -334,7 +351,7 @@ mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/io/excl
 }'
 ```
 
-### 11. Subscribe to Pin State
+### 12. Subscribe to Pin State
 
 Subscribe to a specific pin state:
 
@@ -357,6 +374,7 @@ mosquitto_sub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/io/+/state"
 | `esp32vault/{device_id}/ota/status` | Device → Broker | OTA update progress and status |
 | `esp32vault/{device_id}/config` | Device → Broker | Configuration data |
 | `esp32vault/{device_id}/cmd/mqtt` | Broker → Device | Configure MQTT settings |
+| `esp32vault/{device_id}/cmd/wifi` | Broker → Device | Update WiFi credentials |
 | `esp32vault/{device_id}/cmd/ota_update` | Broker → Device | Trigger OTA firmware update |
 | `esp32vault/{device_id}/cmd/restart` | Broker → Device | Restart device |
 | `esp32vault/{device_id}/cmd/reset_wifi` | Broker → Device | Reset WiFi credentials |

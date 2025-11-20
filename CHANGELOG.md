@@ -5,6 +5,34 @@ All notable changes to ESP32 Vault will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **MQTT WiFi Configuration**: New `/cmd/wifi` topic for updating WiFi credentials via MQTT
+  - Supports `ssid` and `password` parameters
+  - Device automatically restarts after credentials are updated
+
+### Changed
+- **WiFi Setup Method**: Replaced HTTP server-based WiFi configuration with default hotspot provisioning
+  - Removed AP mode web interface
+  - Device now connects to predefined hotspot (SSID: `EspSetup`, Password: `HeLooWod`) for initial setup
+  - All configuration now done via MQTT for consistency
+  - Reduced firmware size by ~2.5% (Flash usage: 68.2% → 65.9%)
+
+### Removed
+- **HTTP Server**: Removed WebServer dependency and all HTTP-based configuration
+  - Removed web portal at 192.168.4.1
+  - Removed AP mode configuration interface
+  - Removed WebServer library dependency from WiFiManager
+
+### Documentation
+- Updated README.md with new WiFi setup workflow
+- Updated QUICKSTART.md with laptop hotspot setup instructions
+- Updated ARCHITECTURE.md with new WiFi connection flow
+- Updated TESTING.md with MQTT-based configuration tests
+- Updated IMPLEMENTATION_SUMMARY.md with new architecture details
+- Updated example_mqtt_commands.md with WiFi configuration commands
+
 ## [1.1.0] - 2025-10-24
 
 ### Added

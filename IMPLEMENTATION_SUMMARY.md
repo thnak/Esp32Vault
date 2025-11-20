@@ -30,25 +30,27 @@ ESP32 Vault is a complete IoT solution for ESP32 microcontrollers using the Ardu
 
 **Files**:
 - `include/WiFiManager.h` - WiFi manager interface  
-- `src/WiFiManager.cpp` - WiFi and web server implementation
+- `src/WiFiManager.cpp` - WiFi manager implementation
 
 **Configuration Flow**:
 1. Device boots → Check for saved credentials
 2. If found → Attempt connection (timeout: 10 seconds)
 3. If success → Station mode, proceed to MQTT
-4. If fail or none → Start AP mode with web portal
+4. If fail or none → Connect to default hotspot (`EspSetup` / `HeLooWod`)
+5. Configure WiFi via MQTT commands
 
 ### ✅ 3. Settings Management via MQTT (Required)
 **Implementation**: Remote configuration through MQTT topics
 
 **Supported Commands**:
 - `cmd/mqtt` - Configure MQTT broker settings
-- `cmd/ota` - Enable OTA updates
+- `cmd/wifi` - Update WiFi credentials (device will restart)
+- `cmd/ota_update` - Trigger OTA firmware update
 - `cmd/restart` - Restart device
-- `cmd/reset_wifi` - Clear WiFi credentials (local config)
+- `cmd/reset_wifi` - Clear WiFi credentials (device will restart)
 - `config/set` - Update device configuration
 
-**Note**: WiFi credentials are managed locally via AP mode (as specified), while all other settings can be managed through MQTT.
+**Note**: All settings, including WiFi credentials, are managed through MQTT for a unified configuration approach.
 
 **Implementation in**: `src/main.cpp` - `handleMQTTMessage()` function
 
@@ -100,7 +102,7 @@ main.cpp (Integration Layer)
 
 ### Source Code (4 files)
 - `src/main.cpp` - Application entry point and integration
-- `src/WiFiManager.cpp` - WiFi and web server implementation
+- `src/WiFiManager.cpp` - WiFi manager implementation
 - `src/MQTTManager.cpp` - MQTT client implementation
 - `src/OTAManager.cpp` - OTA update implementation
 
@@ -131,8 +133,8 @@ main.cpp (Integration Layer)
 
 ### WiFi Management
 ✓ Automatic connection to saved networks
-✓ Fallback to AP mode on failure
-✓ Web-based configuration interface
+✓ Fallback to default hotspot on failure
+✓ MQTT-based configuration interface
 ✓ Persistent credential storage
 ✓ Connection timeout and retry logic
 ✓ Remote WiFi reset capability
@@ -154,7 +156,7 @@ main.cpp (Integration Layer)
 ✓ Optional password protection
 
 ### Configuration Management
-✓ Local WiFi configuration (AP mode)
+✓ WiFi configuration via MQTT
 ✓ Remote MQTT configuration (via MQTT)
 ✓ Persistent storage in NVS
 ✓ Factory reset capability
@@ -182,14 +184,12 @@ main.cpp (Integration Layer)
 ### Network
 - **WiFi**: 802.11 b/g/n (2.4 GHz only)
 - **MQTT**: v3.1.1 protocol
-- **HTTP**: Port 80 (web server in AP mode)
-- **OTA**: Port 3232 (ArduinoOTA)
+- **OTA**: HTTP/HTTPS firmware downloads
 
 ### Performance
 - **WiFi Reconnect**: 5-10 seconds
 - **MQTT Reconnect**: 5-second intervals
 - **Status Updates**: 30 seconds (configurable)
-- **Web Server**: Single concurrent connection
 
 ## Security Features
 
@@ -200,7 +200,7 @@ main.cpp (Integration Layer)
 ✓ Secure credential storage
 
 ### Recommendations for Production
-- Change default AP password
+- Change default hotspot credentials in WiFiManager.h
 - Enable MQTT over TLS/SSL
 - Set strong OTA password
 - Use strong MQTT credentials
@@ -210,11 +210,11 @@ main.cpp (Integration Layer)
 
 ### Initial Setup
 1. Build and upload firmware via USB
-2. Connect to ESP32 AP (`ESP32-Vault-{MAC}`)
-3. Configure WiFi via web interface (192.168.4.1)
-4. Device restarts and connects to WiFi
-5. Configure MQTT via MQTT command
-6. Enable OTA for future updates
+2. Set up laptop hotspot (SSID: `EspSetup`, Password: `HeLooWod`)
+3. Start MQTT broker on laptop
+4. Configure MQTT via MQTT command
+5. Configure WiFi via MQTT command
+6. Device restarts and connects to configured WiFi
 
 ### Runtime Operation
 - Device publishes status every 30 seconds
@@ -284,9 +284,9 @@ MIT License - Free for commercial and personal use
 | Requirement | Status | Implementation |
 |------------|--------|----------------|
 | MQTT Required | ✅ Complete | PubSubClient with auto-reconnect |
-| WiFi with Configuration | ✅ Complete | AP mode + web portal |
+| WiFi with Configuration | ✅ Complete | Default hotspot + MQTT provisioning |
 | Settings via MQTT | ✅ Complete | Command topics + handlers |
-| OTA Support | ✅ Complete | ArduinoOTA with mDNS |
+| OTA Support | ✅ Complete | HTTP(S) OTA with MQTT trigger |
 
 ## Build Instructions
 
@@ -311,12 +311,12 @@ pio device monitor
 ## Quick Test
 
 After uploading:
-1. Check serial output for AP mode SSID
-2. Connect to WiFi AP
-3. Open http://192.168.4.1
-4. Configure WiFi
-5. Verify connection in serial monitor
-6. Configure MQTT via command
+1. Check serial output for connection status
+2. Set up laptop hotspot (SSID: `EspSetup`, Password: `HeLooWod`)
+3. Start MQTT broker on laptop
+4. Configure MQTT via command
+5. Configure WiFi via MQTT command
+6. Verify connection in serial monitor
 7. Verify status messages
 
 ## Success Criteria

@@ -63,8 +63,8 @@ void loop() {
     // Handle WiFi Manager (includes 1ms delay internally)
     wifiManager.loop();
     
-    // Only run MQTT if WiFi is connected and not in AP mode
-    if (wifiManager.isConnected() && !wifiManager.isAPMode()) {
+    // Only run MQTT if WiFi is connected
+    if (wifiManager.isConnected()) {
         mqttManager.loop();
         otaManager.loop();
         inputManager.loop();
@@ -84,12 +84,8 @@ void loop() {
         
         // Additional delay for normal operation (total ~10ms with WiFiManager delay)
         delay(9);
-    } else if (wifiManager.isAPMode()) {
-        // In AP mode (config portal), WiFiManager's 1ms delay is sufficient
-        // This ensures web server gets called ~1000 times per second for responsiveness
-        // No additional delay needed
     } else {
-        // Not connected and not in AP mode, use normal delay
+        // Not connected, use normal delay
         delay(9);
     }
 }
@@ -131,6 +127,27 @@ void handleMQTTMessage(String topic, String payload) {
         mqttManager.publishStatus("restarting");
         delay(1000);
         ESP.restart();
+    }
+    // Handle WiFi credential update command
+    else if (topic.endsWith("/cmd/wifi")) {
+        StaticJsonDocument<256> doc;
+        DeserializationError error = deserializeJson(doc, payload);
+        
+        if (!error) {
+            String newSSID = doc["ssid"] | "";
+            String newPassword = doc["password"] | "";
+            
+            if (newSSID.length() > 0 && newPassword.length() > 0) {
+                wifiManager.saveCredentials(newSSID, newPassword);
+                mqttManager.publishStatus("wifi_credentials_updated");
+                Serial.println("WiFi credentials updated via MQTT");
+                delay(1000);
+                ESP.restart();
+            } else {
+                mqttManager.publishStatus("wifi_update_failed_invalid_params");
+                Serial.println("Invalid WiFi credentials provided");
+            }
+        }
     }
     // Handle WiFi reset command
     else if (topic.endsWith("/cmd/reset_wifi")) {
