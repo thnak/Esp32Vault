@@ -32,17 +32,17 @@ ESP32 Vault is designed as a modular IoT solution with three main components wor
 
 ### 1. WiFiManager
 
-**Purpose**: Manages WiFi connectivity with automatic fallback to AP mode for configuration.
+**Purpose**: Manages WiFi connectivity with automatic fallback to default hotspot for configuration.
 
 **Features**:
 - Persistent credential storage (ESP32 Preferences/NVS)
 - Automatic connection to saved networks
-- AP mode with web-based configuration portal
+- Default hotspot provisioning (SSID: `EspSetup`, Password: `HeLooWod`)
 - Connection timeout and retry logic
+- MQTT-based credential updates
 
 **States**:
-- `Station Mode (STA)`: Connected to WiFi network
-- `Access Point Mode (AP)`: Hosting configuration portal
+- `Station Mode (STA)`: Connected to WiFi network or default hotspot
 
 **Flow**:
 ```
@@ -50,12 +50,15 @@ Start
   │
   ├─→ Load saved credentials?
   │   ├─→ Yes → Connect to WiFi
-  │   │   ├─→ Success → Station Mode
-  │   │   └─→ Fail → Start AP Mode
-  │   └─→ No → Start AP Mode
+  │   │   ├─→ Success → Station Mode (User WiFi)
+  │   │   └─→ Fail → Connect to Default Hotspot
+  │   │       ├─→ Success → Station Mode (Provisioning)
+  │   │       └─→ Fail → Retry periodically
+  │   └─→ No → Connect to Default Hotspot
+  │       ├─→ Success → Station Mode (Provisioning)
+  │       └─→ Fail → Retry periodically
   │
-  └─→ AP Mode
-      └─→ User configures → Save & Restart
+  └─→ User configures via MQTT → Save & Restart
 ```
 
 ### 2. MQTTManager
@@ -199,9 +202,8 @@ GPIO Interrupt
 Loop:
   │
   ├─→ WiFiManager.loop()
-  │   └─→ Handle web server requests (if AP mode)
   │
-  ├─→ If WiFi connected and not in AP mode:
+  ├─→ If WiFi connected:
   │   ├─→ MQTTManager.loop()
   │   │   ├─→ Handle MQTT messages
   │   │   └─→ Reconnect if needed
@@ -343,9 +345,10 @@ else if (topic.endsWith("/cmd/your_command")) {
 ## Error Handling
 
 ### WiFi Connection Failure
-- Fallback to AP mode
-- Web portal for reconfiguration
+- Fallback to default hotspot (`EspSetup`)
+- MQTT-based provisioning for reconfiguration
 - Persistent storage prevents repeated failures
+- Periodic retry for both saved and default networks
 
 ### MQTT Connection Failure
 - Automatic reconnection with backoff

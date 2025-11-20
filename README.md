@@ -6,8 +6,8 @@ A comprehensive IoT solution for ESP32 with Arduino framework, featuring WiFi co
 
 ### 1. WiFi Management
 - **Automatic Connection**: Connects to saved WiFi credentials on startup
-- **AP Configuration Mode**: If no credentials exist or connection fails, device starts as Access Point
-- **Web-based Configuration**: Simple web interface to configure WiFi credentials
+- **Default Hotspot Provisioning**: If no credentials exist or connection fails, device connects to predefined hotspot (SSID: `EspSetup`, Password: `HeLooWod`)
+- **MQTT-based Configuration**: Configure WiFi credentials via MQTT commands
 - **Persistent Storage**: WiFi credentials stored in ESP32 preferences
 
 ### 2. MQTT Integration
@@ -95,12 +95,63 @@ pio device monitor
 
 ### WiFi Configuration
 
-1. On first boot, the device will start in AP mode
-2. Connect to WiFi network: `ESP32-Vault-XXXXXXXX` (password: `12345678`)
-3. Open browser and navigate to `http://192.168.4.1`
-4. Enter your WiFi SSID and password
-5. Click "Save & Connect"
-6. Device will restart and connect to your WiFi network
+#### First Boot Setup
+
+1. Set up a WiFi hotspot on your laptop or mobile device:
+   - **SSID**: `EspSetup`
+   - **Password**: `HeLooWod`
+   - **Network Type**: 2.4GHz (ESP32 doesn't support 5GHz)
+
+2. Power on the ESP32 device - it will automatically attempt to connect to the `EspSetup` hotspot
+
+3. Start an MQTT broker on the device hosting the hotspot (your laptop):
+   ```bash
+   # Install mosquitto (if not already installed)
+   # On Ubuntu/Debian:
+   sudo apt-get install mosquitto mosquitto-clients
+   
+   # On macOS:
+   brew install mosquitto
+   
+   # Start mosquitto broker
+   mosquitto -v
+   ```
+
+4. Configure the MQTT broker on the ESP32:
+   ```bash
+   # Replace ESP32-Vault-XXXXXXXX with your device ID (shown in serial monitor)
+   mosquitto_pub -h localhost \
+     -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/mqtt" \
+     -m '{
+       "server": "192.168.x.x",
+       "port": 1883
+     }'
+   ```
+   Note: Replace `192.168.x.x` with your laptop's IP address on the hotspot network
+
+5. Configure your permanent WiFi credentials via MQTT:
+   ```bash
+   mosquitto_pub -h localhost \
+     -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/wifi" \
+     -m '{
+       "ssid": "YourHomeWiFi",
+       "password": "YourWiFiPassword"
+     }'
+   ```
+
+6. The device will restart and connect to your configured WiFi network
+
+#### Updating WiFi Credentials
+
+To update WiFi credentials later via MQTT:
+```bash
+mosquitto_pub -h your-broker.com \
+  -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/wifi" \
+  -m '{
+    "ssid": "NewWiFiSSID",
+    "password": "NewWiFiPassword"
+  }'
+```
 
 ### MQTT Configuration
 
@@ -127,6 +178,16 @@ Payload: {
   "password": "password"
 }
 ```
+
+### Update WiFi Credentials
+```json
+Topic: esp32vault/{device_id}/cmd/wifi
+Payload: {
+  "ssid": "YourWiFiSSID",
+  "password": "YourWiFiPassword"
+}
+```
+Note: Device will restart after updating credentials.
 
 ### Trigger OTA Update
 ```json
@@ -323,10 +384,10 @@ The device uses ESP32 Preferences (NVS) to store:
 
 ## Security Considerations
 
-1. Change the default AP password in `WiFiManager.cpp`
-2. Use secure MQTT connections (TLS) in production
-3. Set OTA password using `otaManager.setPassword()` in `main.cpp`
-4. Don't expose the AP mode to untrusted networks
+1. Use secure MQTT connections (TLS) in production
+2. Set OTA password using `otaManager.setPassword()` in `main.cpp`
+3. Keep firmware updated
+4. Change default hotspot credentials by modifying `DEFAULT_SSID` and `DEFAULT_PASSWORD` in `WiFiManager.h` for enhanced security
 
 ## Troubleshooting
 
@@ -334,6 +395,7 @@ The device uses ESP32 Preferences (NVS) to store:
 - Check SSID and password are correct
 - Ensure WiFi network is 2.4GHz (ESP32 doesn't support 5GHz)
 - Try resetting WiFi credentials via MQTT or manually
+- Verify the default hotspot (EspSetup) is available for initial provisioning
 
 ### MQTT not connecting
 - Verify MQTT broker address and port
@@ -341,7 +403,7 @@ The device uses ESP32 Preferences (NVS) to store:
 - Ensure credentials are correct if using authentication
 
 ### OTA update fails
-- Ensure device and computer are on same network
+- Ensure device and update server are network accessible
 - Check that sufficient flash space is available
 - Verify network stability during update
 

@@ -40,18 +40,47 @@ pio device monitor
 
 ### First Time Setup
 
-1. After upload, the ESP32 will start in Access Point mode
-2. Look for WiFi network named: `ESP32-Vault-XXXXXXXX`
-3. Connect to this network (password: `12345678`)
-4. Open browser and go to: `http://192.168.4.1`
-5. Enter your WiFi credentials
-6. Click "Save & Connect"
-7. ESP32 will restart and connect to your WiFi
+1. Set up a WiFi hotspot on your laptop or mobile device:
+   - **SSID**: `EspSetup`
+   - **Password**: `HeLooWod`
+   - **Network Type**: 2.4GHz recommended
+   
+2. After uploading firmware, the ESP32 will automatically connect to the `EspSetup` hotspot
+   
+3. Start an MQTT broker on your laptop:
+   ```bash
+   # Install mosquitto (if needed)
+   # Ubuntu/Debian: sudo apt-get install mosquitto
+   # macOS: brew install mosquitto
+   
+   # Start broker
+   mosquitto -v
+   ```
+
+4. Find your laptop's IP on the hotspot network (typically 192.168.x.1)
+
+5. Configure MQTT on the ESP32:
+   ```bash
+   # Replace with your actual device ID from serial monitor
+   mosquitto_pub -h localhost \
+     -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/mqtt" \
+     -m '{"server": "192.168.x.x", "port": 1883}'
+   ```
+
+6. Configure your permanent WiFi:
+   ```bash
+   mosquitto_pub -h localhost \
+     -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/wifi" \
+     -m '{"ssid": "YourWiFi", "password": "YourPassword"}'
+   ```
+
+7. ESP32 will restart and connect to your configured WiFi
 
 ### Check Connection
 
 Monitor the serial output to see:
 ```
+Attempting to connect to saved WiFi...
 WiFi connected!
 IP address: 192.168.1.XXX
 ```
@@ -129,13 +158,14 @@ pio run --target upload --upload-port ESP32-Vault-XXXXXXXX.local
 
 ### ESP32 Won't Connect to WiFi
 
-**Problem**: Device keeps restarting in AP mode
+**Problem**: Device keeps trying to connect
 
 **Solutions**:
 1. Verify WiFi password is correct
 2. Ensure WiFi is 2.4GHz (ESP32 doesn't support 5GHz)
 3. Check router allows new devices to connect
 4. Try moving ESP32 closer to router
+5. Ensure the `EspSetup` hotspot is active for initial provisioning
 
 **Reset WiFi credentials**:
 ```bash
@@ -144,15 +174,16 @@ mosquitto_pub -h your-broker.com \
   -m "1"
 ```
 
-### Can't Find AP Mode Network
+### Can't Connect to Default Hotspot
 
-**Problem**: WiFi network `ESP32-Vault-XXXXXXXX` not visible
+**Problem**: ESP32 won't connect to `EspSetup` hotspot
 
 **Solutions**:
-1. Wait 30 seconds after power-on
-2. Check serial monitor to confirm AP mode started
-3. Look for the exact SSID (case-sensitive)
-4. Restart ESP32 with reset button
+1. Verify hotspot SSID is exactly `EspSetup`
+2. Verify hotspot password is exactly `HeLooWod`
+3. Ensure hotspot is 2.4GHz
+4. Check serial monitor for connection attempts
+5. Restart ESP32 with reset button
 
 ### MQTT Not Connecting
 
@@ -218,7 +249,7 @@ After enabling OTA, update the code:
 
 Before deploying to production:
 
-1. ✅ Change default AP password in `WiFiManager.cpp`
+1. ✅ Change default hotspot credentials in `WiFiManager.h` (DEFAULT_SSID and DEFAULT_PASSWORD)
 2. ✅ Set OTA password using `otaManager.setPassword()`
 3. ✅ Use TLS/SSL for MQTT (change port to 8883)
 4. ✅ Use strong MQTT credentials

@@ -47,33 +47,37 @@ pio run --target upload
 ```
 ESP32 Vault Starting...
 Initializing WiFi...
-No saved credentials. Starting AP mode...
-AP Mode started
-SSID: ESP32-Vault-XXXXXXXX
-IP address: 192.168.4.1
-Web server started on port 80
+No saved credentials. Attempting to connect to default hotspot...
+...
+Connected to default hotspot!
+IP address: 192.168.x.x
+Use MQTT to configure new WiFi credentials.
+Initializing MQTT...
 ```
 
-### Test 2.2: AP Mode Web Interface
+### Test 2.2: WiFi Configuration via MQTT
+
+**Prerequisites**:
+1. Set up laptop hotspot with SSID `EspSetup` and password `HeLooWod`
+2. Start MQTT broker on laptop (e.g., `mosquitto -v`)
 
 **Steps**:
-1. Connect to WiFi network: `ESP32-Vault-XXXXXXXX` (password: `12345678`)
-2. Open browser to `http://192.168.4.1`
+1. Power on ESP32 (it will connect to the `EspSetup` hotspot)
+2. Configure MQTT broker:
+   ```bash
+   mosquitto_pub -h localhost \
+     -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/mqtt" \
+     -m '{"server": "192.168.x.x", "port": 1883}'
+   ```
+3. Configure WiFi credentials:
+   ```bash
+   mosquitto_pub -h localhost \
+     -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/wifi" \
+     -m '{"ssid": "TestWiFi", "password": "TestPassword"}'
+   ```
 
 **Expected Result**:
-- Web page loads with title "ESP32 Vault"
-- Form with SSID and Password fields visible
-- "Save & Connect" button present
-
-### Test 2.3: WiFi Configuration via Web
-
-**Steps**:
-1. In web interface, enter valid WiFi credentials
-2. Click "Save & Connect"
-
-**Expected Result**:
-- Success page displayed
-- Device restarts after 2 seconds
+- Device restarts automatically
 - Device connects to WiFi network
 - Serial monitor shows:
   ```
@@ -81,10 +85,10 @@ Web server started on port 80
   IP address: 192.168.1.XXX
   ```
 
-### Test 2.4: WiFi Reconnection After Restart
+### Test 2.3: WiFi Reconnection After Restart
 
 **Steps**:
-1. Configure WiFi (Test 2.3)
+1. Configure WiFi (Test 2.2)
 2. Reset ESP32 (press reset button)
 3. Monitor serial output
 
@@ -95,7 +99,7 @@ WiFi connected!
 IP address: 192.168.1.XXX
 ```
 
-### Test 2.5: WiFi Connection Failure Handling
+### Test 2.4: WiFi Connection Failure Handling
 
 **Steps**:
 1. Configure WiFi with wrong password
@@ -105,8 +109,11 @@ IP address: 192.168.1.XXX
 ```
 Attempting to connect to saved WiFi...
 .........
-Failed to connect. Starting AP mode...
-AP Mode started
+Failed to connect to saved WiFi.
+Attempting to connect to default hotspot for provisioning...
+Connected to default hotspot!
+IP address: 192.168.x.x
+Use MQTT to configure new WiFi credentials.
 ```
 
 ## 3. MQTT Manager Tests
@@ -228,7 +235,7 @@ mosquitto_pub -h localhost \
 **Expected Result**:
 - Serial monitor shows: "WiFi credentials cleared"
 - Device publishes "wifi_reset" to status
-- Device restarts in AP mode
+- Device restarts and connects to default hotspot
 
 ### Test 4.3: Trigger OTA Update Command
 
@@ -512,9 +519,8 @@ Use this checklist to verify all tests:
 - [ ] Serial monitor shows output
 
 ### WiFi Manager
-- [ ] AP mode starts on first boot
-- [ ] Web interface accessible
-- [ ] WiFi configuration works
+- [ ] Default hotspot connection on first boot
+- [ ] MQTT-based WiFi configuration works
 - [ ] Reconnection after restart
 - [ ] Failure handling works
 
