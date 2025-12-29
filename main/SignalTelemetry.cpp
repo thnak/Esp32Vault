@@ -144,7 +144,6 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
     config.rawTopic = "raw/" + std::to_string(pin);
     config.pulseTopic = "pulse/" + std::to_string(pin);
     
-// <<<<<<< copilot/implement-offline-buffering-psram
     // Configure hardware using ESP-IDF GPIO API
     gpio_config_t io_conf = {};
     io_conf.intr_type = GPIO_INTR_ANYEDGE;
@@ -153,10 +152,6 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
     io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
     gpio_config(&io_conf);
-// =======
-    // Configure hardware
-    pinMode(pin, INPUT);
-// >>>>>>> main
     
     // Setup RMT if requested and capturing pulse
     if (capturePulse && useRMT) {
@@ -165,11 +160,7 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
         if (configureRMT(pin, &config.rmtChannel)) {
             // RMT configured successfully
         } else {
-// <<<<<<< copilot/implement-offline-buffering-psram
-            ESP_LOGW(TAG, "RMT configuration failed for pin %d, using ISR fallback", pin);
-// =======
-            ESP_LOGW(TAG, "WARNING: RMT configuration failed for pin %u, using ISR fallback", pin);
-// >>>>>>> main
+            ESP_LOGW(TAG, "RMT configuration failed for pin %u, using ISR fallback", pin);
             config.useRMT = false;
         }
     }
@@ -189,11 +180,7 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
     
     configuredPins[pin] = config;
     
-// <<<<<<< copilot/implement-offline-buffering-psram
-    ESP_LOGI(TAG, "Pin %d configured for signal telemetry", pin);
-// =======
     ESP_LOGI(TAG, "Pin %u configured for signal telemetry", pin);
-// >>>>>>> main
     ESP_LOGI(TAG, "  Raw: %s", captureRaw ? "Yes" : "No");
     ESP_LOGI(TAG, "  Pulse: %s", capturePulse ? "Yes" : "No");
     ESP_LOGI(TAG, "  RMT: %s", config.useRMT ? "Yes" : "No");
@@ -218,11 +205,7 @@ bool SignalTelemetry::removePin(uint8_t pin) {
     
     configuredPins.erase(it);
     
-// <<<<<<< copilot/implement-offline-buffering-psram
-    ESP_LOGI(TAG, "Pin %d removed from signal telemetry", pin);
-// =======
     ESP_LOGI(TAG, "Pin %u removed from signal telemetry", pin);
-// >>>>>>> main
     return true;
 }
 
@@ -433,17 +416,10 @@ void SignalTelemetry::publishDiagnostics() {
                               CONTENT_TYPE_DIAG_SIGNAL, false, 0);
     
     ESP_LOGI(TAG, "Diagnostics published:");
-// <<<<<<< copilot/implement-offline-buffering-psram
-    ESP_LOGI(TAG, "  Dropped Raw: %d", diag.droppedRaw);
-    ESP_LOGI(TAG, "  Dropped Pulse: %d", diag.droppedPulse);
-    ESP_LOGI(TAG, "  Queue Depth: %d", diag.queueDepth);
-    ESP_LOGI(TAG, "  RMT Overflow: %d", diag.rmtOverflow);
-// =======
     ESP_LOGI(TAG, "  Dropped Raw: %u", diag.droppedRaw);
     ESP_LOGI(TAG, "  Dropped Pulse: %u", diag.droppedPulse);
     ESP_LOGI(TAG, "  Queue Depth: %u", diag.queueDepth);
     ESP_LOGI(TAG, "  RMT Overflow: %u", diag.rmtOverflow);
-// >>>>>>> main
 }
 
 void SignalTelemetry::publishHeartbeat() {
@@ -486,7 +462,6 @@ DiagPacket SignalTelemetry::getDiagnostics() {
     return diag;
 }
 
-// <<<<<<< copilot/implement-offline-buffering-psram
 void SignalTelemetry::updateMQTTState() {
     MQTTState previousState = mqttState;
     
@@ -508,12 +483,11 @@ void SignalTelemetry::updateMQTTState() {
     if (previousState == MQTTState::DISCONNECTED && 
         (mqttState == MQTTState::CONNECTED_FAST || mqttState == MQTTState::CONNECTED_SLOW)) {
         if (!replayInProgress && psramBuffer != nullptr && psramBuffer->getCount() > 0) {
-            ESP_LOGI(TAG, "MQTT reconnected with %d buffered packets, starting replay task", 
+            ESP_LOGI(TAG, "MQTT reconnected with %u buffered packets, starting replay task", 
                      psramBuffer->getCount());
             startReplay();
         }
     }
-}
 }
 
 bool SignalTelemetry::shouldUseDirectPublish() const {
@@ -525,31 +499,6 @@ bool SignalTelemetry::shouldUseDirectPublish() const {
             return false;
         }
         return true;
-// =======
-bool SignalTelemetry::configureRMT(uint8_t pin, rmt_channel_t channel) {
-    rmt_config_t config;
-    config.rmt_mode = RMT_MODE_RX;
-    config.channel = channel;
-    config.gpio_num = (gpio_num_t)pin;
-    config.clk_div = 80; // 1us resolution (80MHz / 80 = 1MHz)
-    config.mem_block_num = 1;
-    config.flags = 0;
-    
-    config.rx_config.filter_en = false;
-    config.rx_config.filter_ticks_thresh = 0;
-    config.rx_config.idle_threshold = 65535; // Max idle threshold
-    
-    esp_err_t err = rmt_config(&config);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "ERROR: RMT config failed: 0x%x", err);
-        return false;
-    }
-    
-    err = rmt_driver_install(channel, 1000, 0);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "ERROR: RMT driver install failed: 0x%x", err);
-        return false;
-// >>>>>>> main
     }
     return false;
 }
@@ -557,15 +506,7 @@ bool SignalTelemetry::configureRMT(uint8_t pin, rmt_channel_t channel) {
 bool SignalTelemetry::tryDirectPublish(const RawPacket* batch) {
     lastPublishAttempt = millis();
     
-// <<<<<<< copilot/implement-offline-buffering-psram
     if (mqttManager == nullptr || !mqttManager->isConnected()) {
-// =======
-    // Start receiving
-    err = rmt_rx_start(channel, true);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "ERROR: RMT rx start failed: 0x%x", err);
-        rmt_driver_uninstall(channel);
-// >>>>>>> main
         return false;
     }
     
@@ -580,14 +521,14 @@ void SignalTelemetry::spillToPSRAM(const RawPacket* batch) {
     if (psramBuffer == nullptr) {
         // No PSRAM available, must drop
         droppedRaw += batch->count;
-        ESP_LOGW(TAG, "No PSRAM buffer, dropping %d edges", batch->count);
+        ESP_LOGW(TAG, "No PSRAM buffer, dropping %u edges", batch->count);
         return;
     }
     
     // Enqueue to PSRAM
     if (!psramBuffer->enqueue(batch)) {
         droppedRaw += batch->count;
-        ESP_LOGE(TAG, "Failed to enqueue to PSRAM, dropping %d edges", batch->count);
+        ESP_LOGE(TAG, "Failed to enqueue to PSRAM, dropping %u edges", batch->count);
     }
 }
 
