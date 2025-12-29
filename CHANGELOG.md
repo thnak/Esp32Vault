@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated documentation to clarify that server field should contain hostname or IP only
 
 ### Added
+- **Test Seeder (Build Flag)**: Optional component for firmware stability testing
+  - Build flag: `CONFIG_ENABLE_TEST_SEEDER` (disabled by default)
+  - Generates synthetic telemetry data every 1 second
+  - Publishes raw edge packets, pulse width packets, and diagnostics
+  - Useful for validating MQTT connectivity and firmware stability
+  - Does not require actual GPIO signals
+  - Complete documentation in TEST_SEEDER.md
+
 - **MQTT5 Full Implementation**: Complete MQTT 5.0 protocol support with properties
   - Content-Type properties for all message types (raw, pulse, diag, JSON)
   - Payload Format Indicator (0 for binary, 1 for UTF-8)

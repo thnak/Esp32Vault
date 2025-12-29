@@ -1,0 +1,19 @@
+menu "ESP32 Vault Configuration"
+
+    config ENABLE_TEST_SEEDER
+        bool "Enable Test Seeder"
+        default n
+        help
+            Enable test seeder to generate synthetic telemetry data every second.
+            This is useful for validating firmware stability and MQTT connectivity
+            without requiring actual signal inputs.
+            
+            When enabled, the firmware will publish:
+            - Raw edge packets with simulated edge changes
+            - Pulse width packets with simulated pulse measurements
+            - Diagnostic packets with current system state
+            
+            WARNING: This should only be enabled for testing purposes.
+            Do not enable in production builds.
+
+endmenu

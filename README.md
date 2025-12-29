@@ -57,7 +57,14 @@ ESP32 Vault captures all signal changes with maximum accuracy and minimal proces
 - **Integrity Verification**: Built-in binary verification (SHA256 support noted for future)
 - **Progress Monitoring**: Real-time update progress feedback via MQTT
 
-### 4. Signal Capture Architecture
+### 4. Test Seeder (Optional)
+- **Build-Time Flag**: Enable with `CONFIG_ENABLE_TEST_SEEDER=y`
+- **Synthetic Telemetry**: Generates test data every second
+- **Stability Testing**: Validates firmware under continuous load
+- **No Hardware Required**: Tests MQTT connectivity without GPIO signals
+- See [TEST_SEEDER.md](TEST_SEEDER.md) for details
+
+### 5. Signal Capture Architecture
 
 - **RTOS-based Design**: Lock-free ring buffer with prioritized task system
 - **ISR Safety**: Interrupt handlers copy to ring buffer without malloc
