@@ -33,10 +33,43 @@ void MQTTManager::begin() {
     if (loadConfig()) {
         ESP_LOGI(TAG, "MQTT configuration loaded");
         
+        // Construct proper MQTT URI if not already formatted
+        std::string mqttUri;
+        
+        // Check if URI already has mqtt:// or mqtts:// scheme
+        bool hasScheme = (mqttServer.find("mqtt://") == 0 || mqttServer.find("mqtts://") == 0);
+        
+        if (!hasScheme) {
+            // No scheme found, construct full URI with scheme and port
+            // Port 8883 is the standard MQTT over TLS port
+            if (mqttPort == 8883) {
+                mqttUri = "mqtts://" + mqttServer + ":" + std::to_string(mqttPort);
+            } else {
+                mqttUri = "mqtt://" + mqttServer + ":" + std::to_string(mqttPort);
+            }
+        } else {
+            // Scheme already present, check if port needs to be appended
+            size_t schemeEnd = mqttServer.find("://");
+            if (schemeEnd != std::string::npos) {
+                // Check for port after the scheme
+                if (mqttServer.find(":", schemeEnd + 3) == std::string::npos) {
+                    // No port in URI, append it
+                    mqttUri = mqttServer + ":" + std::to_string(mqttPort);
+                } else {
+                    // URI is complete, use as-is
+                    mqttUri = mqttServer;
+                }
+            } else {
+                // Shouldn't happen if hasScheme is true, but handle gracefully
+                mqttUri = mqttServer;
+            }
+        }
+        
+        ESP_LOGI(TAG, "Connecting to MQTT broker: %s", mqttUri.c_str());
+        
         // Configure MQTT5 client
         esp_mqtt_client_config_t mqtt_cfg = {};
-        mqtt_cfg.broker.address.uri = mqttServer.c_str();
-        mqtt_cfg.broker.address.port = mqttPort;
+        mqtt_cfg.broker.address.uri = mqttUri.c_str();
         mqtt_cfg.credentials.client_id = clientId.c_str();
         
         // MQTT5 specific settings

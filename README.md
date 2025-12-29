@@ -57,7 +57,14 @@ ESP32 Vault captures all signal changes with maximum accuracy and minimal proces
 - **Integrity Verification**: Built-in binary verification (SHA256 support noted for future)
 - **Progress Monitoring**: Real-time update progress feedback via MQTT
 
-### 4. Signal Capture Architecture
+### 4. Test Seeder (Optional)
+- **Build-Time Flag**: Enable with `CONFIG_ENABLE_TEST_SEEDER=y`
+- **Synthetic Telemetry**: Generates test data every second
+- **Stability Testing**: Validates firmware under continuous load
+- **No Hardware Required**: Tests MQTT connectivity without GPIO signals
+- See [TEST_SEEDER.md](TEST_SEEDER.md) for details
+
+### 5. Signal Capture Architecture
 
 - **RTOS-based Design**: Lock-free ring buffer with prioritized task system
 - **ISR Safety**: Interrupt handlers copy to ring buffer without malloc
@@ -257,6 +264,8 @@ Payload: {
 }
 ```
 
+**Note**: The `server` field should contain just the hostname or IP address (e.g., `192.168.1.100` or `broker.example.com`). The MQTT URI scheme (`mqtt://` or `mqtts://`) is automatically added based on the port number.
+
 ## MQTT Commands
 
 **Note**: Replace `{mac}` with your device MAC address (e.g., `A0B1C2D3E4F5`). The MAC address is shown in serial monitor on boot.
@@ -303,6 +312,12 @@ Payload: {
   "password": "password"
 }
 ```
+
+**Parameters**:
+- `server`: MQTT broker hostname or IP address (e.g., `broker.example.com` or `192.168.1.100`). The scheme (`mqtt://` or `mqtts://`) will be added automatically based on the port.
+- `port`: MQTT broker port (default: 1883 for plain MQTT, 8883 for MQTT over TLS)
+- `user`: MQTT username (optional)
+- `password`: MQTT password (optional)
 
 #### Update WiFi Credentials
 

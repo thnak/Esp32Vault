@@ -27,6 +27,8 @@
 // MQTT Configuration (Optional - for development)
 // ============================================
 // Uncomment to set default MQTT broker
+// Note: Use hostname or IP only (e.g., "mqtt.example.com" or "192.168.1.100")
+//       Do not include URI scheme - it will be added automatically
 // #define DEFAULT_MQTT_SERVER "mqtt.example.com"
 // #define DEFAULT_MQTT_PORT 1883
 // #define DEFAULT_MQTT_USER "username"

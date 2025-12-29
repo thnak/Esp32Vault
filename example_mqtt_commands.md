@@ -23,6 +23,14 @@ mosquitto_pub -h your-broker.com -t "esp32vault/ESP32-Vault-XXXXXXXX/cmd/mqtt" -
 }'
 ```
 
+**Parameters:**
+- `server` (required): MQTT broker hostname or IP address (e.g., `broker.example.com` or `192.168.1.100`). Do not include the URI scheme (`mqtt://` or `mqtts://`) as it will be added automatically.
+- `port` (optional): MQTT broker port. Default is 1883 for plain MQTT, use 8883 for MQTT over TLS.
+- `user` (optional): MQTT username for authentication
+- `password` (optional): MQTT password for authentication
+
+**Note:** The device will automatically add the appropriate URI scheme (`mqtt://` or `mqtts://`) based on the port number.
+
 ### 2. Update WiFi Credentials
 
 Update the WiFi network credentials (device will restart):

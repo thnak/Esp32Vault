@@ -6,6 +6,7 @@ idf_component_register(
         "OTAManager.cpp"
         "SignalTelemetry.cpp"
         "PSRAMBufferManager.cpp"
+        "TestSeeder.cpp"
     INCLUDE_DIRS 
         "."
     REQUIRES 
