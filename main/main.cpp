@@ -16,6 +16,10 @@
 #include "SignalTelemetry.h"
 #include "cJSON.h"
 
+#ifdef CONFIG_ENABLE_TEST_SEEDER
+#include "TestSeeder.h"
+#endif
+
 static const char *TAG = "main";
 
 // Manager instances
@@ -23,6 +27,10 @@ WiFiManager wifiManager;
 MQTTManager mqttManager;
 OTAManager otaManager;
 SignalTelemetry signalTelemetry;
+
+#ifdef CONFIG_ENABLE_TEST_SEEDER
+TestSeeder testSeeder;
+#endif
 
 // Status variables
 unsigned long lastStatusUpdate = 0;
@@ -74,6 +82,12 @@ extern "C" void app_main(void)
         ESP_LOGI(TAG, "Initializing Signal Telemetry...");
         signalTelemetry.begin(&mqttManager, mqttManager.getMacAddress());
         signalTelemetry.onBoot();
+        
+#ifdef CONFIG_ENABLE_TEST_SEEDER
+        // Initialize Test Seeder (generates synthetic telemetry)
+        ESP_LOGI(TAG, "Initializing Test Seeder...");
+        testSeeder.begin(&mqttManager, mqttManager.getMacAddress());
+#endif
     }
     
     ESP_LOGI(TAG, "");
