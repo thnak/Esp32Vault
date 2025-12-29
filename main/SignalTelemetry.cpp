@@ -144,6 +144,7 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
     config.rawTopic = "raw/" + std::to_string(pin);
     config.pulseTopic = "pulse/" + std::to_string(pin);
     
+// <<<<<<< copilot/implement-offline-buffering-psram
     // Configure hardware using ESP-IDF GPIO API
     gpio_config_t io_conf = {};
     io_conf.intr_type = GPIO_INTR_ANYEDGE;
@@ -152,6 +153,10 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
     io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
     gpio_config(&io_conf);
+// =======
+    // Configure hardware
+    pinMode(pin, INPUT);
+// >>>>>>> main
     
     // Setup RMT if requested and capturing pulse
     if (capturePulse && useRMT) {
@@ -160,7 +165,11 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
         if (configureRMT(pin, &config.rmtChannel)) {
             // RMT configured successfully
         } else {
+// <<<<<<< copilot/implement-offline-buffering-psram
             ESP_LOGW(TAG, "RMT configuration failed for pin %d, using ISR fallback", pin);
+// =======
+            ESP_LOGW(TAG, "WARNING: RMT configuration failed for pin %u, using ISR fallback", pin);
+// >>>>>>> main
             config.useRMT = false;
         }
     }
@@ -180,7 +189,11 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
     
     configuredPins[pin] = config;
     
+// <<<<<<< copilot/implement-offline-buffering-psram
     ESP_LOGI(TAG, "Pin %d configured for signal telemetry", pin);
+// =======
+    ESP_LOGI(TAG, "Pin %u configured for signal telemetry", pin);
+// >>>>>>> main
     ESP_LOGI(TAG, "  Raw: %s", captureRaw ? "Yes" : "No");
     ESP_LOGI(TAG, "  Pulse: %s", capturePulse ? "Yes" : "No");
     ESP_LOGI(TAG, "  RMT: %s", config.useRMT ? "Yes" : "No");
@@ -205,7 +218,11 @@ bool SignalTelemetry::removePin(uint8_t pin) {
     
     configuredPins.erase(it);
     
+// <<<<<<< copilot/implement-offline-buffering-psram
     ESP_LOGI(TAG, "Pin %d removed from signal telemetry", pin);
+// =======
+    ESP_LOGI(TAG, "Pin %u removed from signal telemetry", pin);
+// >>>>>>> main
     return true;
 }
 
@@ -378,10 +395,10 @@ void SignalTelemetry::publishRawBatch(const RawPacket* batch) {
     size_t headerSize = sizeof(PacketHeader) + sizeof(uint64_t) + sizeof(uint32_t) + sizeof(uint8_t);
     size_t payloadSize = headerSize + (batch->count * sizeof(RawEdge));
     
-    // Publish binary payload
-    // Note: This assumes MQTTManager has been updated to support binary payloads
-    // For now, we'll create a method to publish binary data
-    mqttManager->publish(topic, (const uint8_t*)batch, payloadSize, false);
+    // Publish binary payload with MQTT5 properties
+    // Set message expiry for time-sensitive telemetry
+    mqttManager->publishBinary(topic, (const uint8_t*)batch, payloadSize, 
+                              CONTENT_TYPE_RAW_SIGNAL, false, MESSAGE_EXPIRY_TELEMETRY_SECONDS);
 }
 
 void SignalTelemetry::publishPulse(const PulsePacket* pulse) {
@@ -392,8 +409,10 @@ void SignalTelemetry::publishPulse(const PulsePacket* pulse) {
     
     std::string topic = "pulse/" + std::to_string(pulse->pinId);
     
-    // Publish binary pulse packet
-    mqttManager->publish(topic, (const uint8_t*)pulse, sizeof(PulsePacket), false);
+    // Publish binary pulse packet with MQTT5 properties
+    // Set message expiry for time-sensitive telemetry
+    mqttManager->publishBinary(topic, (const uint8_t*)pulse, sizeof(PulsePacket), 
+                              CONTENT_TYPE_PULSE_SIGNAL, false, MESSAGE_EXPIRY_TELEMETRY_SECONDS);
 }
 
 void SignalTelemetry::publishDiagnostics() {
@@ -409,13 +428,22 @@ void SignalTelemetry::publishDiagnostics() {
     diag.queueDepth = (uint16_t)uxQueueMessagesWaiting(batchQueue);
     diag.rmtOverflow = rmtOverflow;
     
-    mqttManager->publish("diag", (const uint8_t*)&diag, sizeof(DiagPacket), false);
+    // Publish binary diagnostic packet with MQTT5 properties
+    mqttManager->publishBinary("diag", (const uint8_t*)&diag, sizeof(DiagPacket), 
+                              CONTENT_TYPE_DIAG_SIGNAL, false, 0);
     
     ESP_LOGI(TAG, "Diagnostics published:");
+// <<<<<<< copilot/implement-offline-buffering-psram
     ESP_LOGI(TAG, "  Dropped Raw: %d", diag.droppedRaw);
     ESP_LOGI(TAG, "  Dropped Pulse: %d", diag.droppedPulse);
     ESP_LOGI(TAG, "  Queue Depth: %d", diag.queueDepth);
     ESP_LOGI(TAG, "  RMT Overflow: %d", diag.rmtOverflow);
+// =======
+    ESP_LOGI(TAG, "  Dropped Raw: %u", diag.droppedRaw);
+    ESP_LOGI(TAG, "  Dropped Pulse: %u", diag.droppedPulse);
+    ESP_LOGI(TAG, "  Queue Depth: %u", diag.queueDepth);
+    ESP_LOGI(TAG, "  RMT Overflow: %u", diag.rmtOverflow);
+// >>>>>>> main
 }
 
 void SignalTelemetry::publishHeartbeat() {
@@ -458,6 +486,7 @@ DiagPacket SignalTelemetry::getDiagnostics() {
     return diag;
 }
 
+// <<<<<<< copilot/implement-offline-buffering-psram
 void SignalTelemetry::updateMQTTState() {
     MQTTState previousState = mqttState;
     
@@ -496,6 +525,31 @@ bool SignalTelemetry::shouldUseDirectPublish() const {
             return false;
         }
         return true;
+// =======
+bool SignalTelemetry::configureRMT(uint8_t pin, rmt_channel_t channel) {
+    rmt_config_t config;
+    config.rmt_mode = RMT_MODE_RX;
+    config.channel = channel;
+    config.gpio_num = (gpio_num_t)pin;
+    config.clk_div = 80; // 1us resolution (80MHz / 80 = 1MHz)
+    config.mem_block_num = 1;
+    config.flags = 0;
+    
+    config.rx_config.filter_en = false;
+    config.rx_config.filter_ticks_thresh = 0;
+    config.rx_config.idle_threshold = 65535; // Max idle threshold
+    
+    esp_err_t err = rmt_config(&config);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "ERROR: RMT config failed: 0x%x", err);
+        return false;
+    }
+    
+    err = rmt_driver_install(channel, 1000, 0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "ERROR: RMT driver install failed: 0x%x", err);
+        return false;
+// >>>>>>> main
     }
     return false;
 }
@@ -503,7 +557,15 @@ bool SignalTelemetry::shouldUseDirectPublish() const {
 bool SignalTelemetry::tryDirectPublish(const RawPacket* batch) {
     lastPublishAttempt = millis();
     
+// <<<<<<< copilot/implement-offline-buffering-psram
     if (mqttManager == nullptr || !mqttManager->isConnected()) {
+// =======
+    // Start receiving
+    err = rmt_rx_start(channel, true);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "ERROR: RMT rx start failed: 0x%x", err);
+        rmt_driver_uninstall(channel);
+// >>>>>>> main
         return false;
     }
     
