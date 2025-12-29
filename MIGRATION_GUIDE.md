@@ -157,9 +157,9 @@ Payload: {
 
 ## Code Migration Examples
 
-### Arduino/ESP32 Client Side
+### Firmware Side
 
-No changes needed - this is firmware upgrade only.
+The firmware has been completely rewritten for ESP-IDF. No Arduino code remains.
 
 ### Server Side (Python Example)
 
@@ -272,7 +272,7 @@ Before upgrading firmware:
 ### 2. Upgrade Firmware
 
 1. Pull latest code from repository
-2. Build and upload using PlatformIO
+2. Build and flash using ESP-IDF: `idf.py build && idf.py -p /dev/ttyUSB0 flash`
 3. Device will reboot with Signal Telemetry v1
 
 ### 3. Reconfigure Pins
@@ -407,11 +407,11 @@ For questions or issues:
 
 ## Rollback
 
-If you need to rollback to InputManager:
+If you need to rollback to the previous version:
 
 1. Checkout previous firmware version: `git checkout <previous-commit>`
-2. Build and upload old firmware
+2. Build and flash with ESP-IDF: `idf.py build && idf.py -p /dev/ttyUSB0 flash`
 3. Reconfigure pins using old commands
-4. Update server code to expect JSON payloads
+4. Update server code to expect JSON payloads (if rolling back to pre-Signal Telemetry)
 
 **Note**: Configurations are not preserved between versions.

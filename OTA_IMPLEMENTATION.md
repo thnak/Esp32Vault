@@ -82,16 +82,6 @@ idf.py build
 build/esp32vault.bin
 ```
 
-### Arduino (PlatformIO)
-
-```bash
-# Build the project
-pio run
-
-# Binary location
-.pio/build/esp32dev/firmware.bin
-```
-
 ## Hosting Firmware
 
 ### Option 1: Simple HTTP Server (Development)

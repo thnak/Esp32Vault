@@ -1,6 +1,6 @@
 # ESP32 Vault - Signal Telemetry v1
 
-A high-precision signal capture system for ESP32 with Arduino framework, featuring WiFi configuration, MQTT connectivity, OTA updates, and professional-grade signal telemetry.
+A high-precision signal capture system for ESP32 with ESP-IDF framework, featuring WiFi configuration, MQTT connectivity, OTA updates, and professional-grade signal telemetry.
 
 ## Philosophy
 
@@ -104,24 +104,22 @@ For complete documentation, see:
 
 ```
 Esp32Vault/
-├── platformio.ini           # PlatformIO configuration
-├── include/                 # Header files
-│   ├── WiFiManager.h       # WiFi management
-│   ├── MQTTManager.h       # MQTT client with binary support
-│   ├── OTAManager.h        # OTA updates
-│   └── SignalTelemetry.h   # Signal capture system
-└── src/                    # Source files
-    ├── main.cpp            # Main application
-    ├── WiFiManager.cpp     # WiFi implementation
-    ├── MQTTManager.cpp     # MQTT implementation
-    ├── OTAManager.cpp      # OTA implementation
-    └── SignalTelemetry.cpp # Signal telemetry implementation
+├── CMakeLists.txt              # ESP-IDF root build file
+├── sdkconfig.defaults          # ESP-IDF default configuration
+├── main/                       # Main component (ESP-IDF)
+│   ├── CMakeLists.txt         # Component build file
+│   ├── main.cpp               # Application entry point (app_main)
+│   ├── WiFiManager.h/cpp      # WiFi management (ESP-IDF)
+│   ├── MQTTManager.h/cpp      # MQTT5 client (esp-mqtt)
+│   ├── OTAManager.h/cpp       # OTA updates (esp_https_ota)
+│   └── SignalTelemetry.h/cpp  # Signal capture system
+└── build/                      # Build output (generated)
 ```
 
 ## Getting Started
 
 ### Prerequisites
-- PlatformIO IDE or PlatformIO Core
+- ESP-IDF v5.x or later
 - ESP32 development board
 - USB cable for initial programming
 
@@ -133,20 +131,22 @@ git clone https://github.com/thnak/Esp32Vault.git
 cd Esp32Vault
 ```
 
-2. Build the project:
+2. Set up ESP-IDF environment:
 ```bash
-pio run
+. $HOME/esp/esp-idf/export.sh
 ```
 
-3. Upload to ESP32:
+3. Build the project:
 ```bash
-pio run --target upload
+idf.py build
 ```
 
-4. Monitor serial output:
+4. Flash to ESP32:
 ```bash
-pio device monitor
+idf.py -p /dev/ttyUSB0 flash monitor
 ```
+
+See [ESP_IDF_BUILD.md](ESP_IDF_BUILD.md) for detailed build instructions.
 
 ## Initial Setup
 
@@ -401,7 +401,7 @@ Payload: {
 
 ## OTA Updates
 
-OTA updates are now performed via HTTP(S) and triggered through MQTT commands. This provides better security and flexibility compared to the previous ArduinoOTA implementation.
+OTA updates are performed via HTTP(S) and triggered through MQTT commands.
 
 ### Performing an OTA Update
 
@@ -437,24 +437,25 @@ To create a firmware binary for OTA updates:
 
 ```bash
 # Build the project
-pio run
+idf.py build
 
 # The firmware binary will be at:
-# .pio/build/esp32dev/firmware.bin
+# build/esp32vault.bin
 ```
 
 ## Documentation
 
 - **[SIGNAL_TELEMETRY.md](SIGNAL_TELEMETRY.md)** - Complete signal telemetry documentation
+- **[ESP_IDF_BUILD.md](ESP_IDF_BUILD.md)** - Detailed ESP-IDF build instructions
 - **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Migration from old InputManager system
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture details
 
 ## Dependencies
 
-- **espressif32**: ESP32 platform
-- **PubSubClient**: MQTT client library (with binary payload support)
-- **ArduinoJson**: JSON parsing and generation
-- **FreeRTOS**: Real-time operating system (included with ESP32)
+- **ESP-IDF v5.x**: ESP32 development framework
+- **esp-mqtt**: Native MQTT5 client (ESP-IDF component)
+- **cJSON**: JSON parsing (ESP-IDF component)
+- **FreeRTOS**: Real-time operating system (included with ESP-IDF)
 - **ESP32 Hardware**: RMT peripheral, hardware timers, GPIO interrupts
 
 ## Configuration Storage

@@ -17,9 +17,9 @@ The firmware acts as a precision oscilloscope, capturing every signal change wit
 
 ## Architecture
 
-### From Arduino to ESP-IDF
+### ESP-IDF Implementation
 
-The project has been migrated from Arduino framework to ESP-IDF for:
+The project uses ESP-IDF framework for:
 - **Native MQTT5** support with esp-mqtt component
 - **Better performance** - Lower latency, smaller binary
 - **Professional RTOS** - Direct FreeRTOS integration
@@ -251,7 +251,7 @@ Total size: 14 bytes
 
 ## Building and Flashing
 
-### ESP-IDF (Recommended)
+### ESP-IDF
 
 ```bash
 # Configure
@@ -262,13 +262,6 @@ idf.py build
 
 # Flash and monitor
 idf.py -p /dev/ttyUSB0 flash monitor
-```
-
-### Arduino (Legacy - Still Supported)
-
-```bash
-pio run
-pio run --target upload
 ```
 
 ## Testing

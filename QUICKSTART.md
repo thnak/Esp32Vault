@@ -6,7 +6,7 @@ Get your ESP32 Vault Signal Telemetry system up and running in minutes!
 
 - ESP32 development board
 - USB cable (for initial programming)
-- Computer with ESP-IDF v5.x installed (or PlatformIO for Arduino build)
+- Computer with ESP-IDF v5.x installed
 - WiFi network (2.4GHz)
 - MQTT broker (required for signal data)
 
@@ -33,19 +33,6 @@ idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
 **Note**: Replace `/dev/ttyUSB0` with your actual serial port (e.g., `/dev/ttyACM0` on Linux, `COM3` on Windows, `/dev/cu.usbserial-*` on macOS).
-
-### Using PlatformIO (Arduino - Legacy)
-
-```bash
-# Build the project
-pio run
-
-# Upload to ESP32 (connect via USB)
-pio run --target upload
-
-# Monitor serial output
-pio device monitor
-```
 
 See [ESP_IDF_BUILD.md](ESP_IDF_BUILD.md) for detailed ESP-IDF build instructions.
 
@@ -237,10 +224,6 @@ mosquitto_pub -h your-broker.com \
 # ESP-IDF
 idf.py build
 # Binary will be at: build/esp32vault.bin
-
-# Arduino
-pio run
-# Binary will be at: .pio/build/esp32dev/firmware.bin
 ```
 
 Monitor OTA progress:
@@ -344,7 +327,7 @@ Connect a signal source to pin 14 (e.g., button, sensor) and observe edge change
 After configuring OTA, update the firmware:
 
 1. Make a small change to the code
-2. Build the firmware: `idf.py build` or `pio run`
+2. Build the firmware: `idf.py build`
 3. Upload binary to HTTP server
 4. Send OTA command with URL
 5. Monitor progress via MQTT

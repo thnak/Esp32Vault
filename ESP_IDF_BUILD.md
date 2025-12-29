@@ -286,18 +286,35 @@ In `main/MQTTManager.cpp`:
 mqtt_cfg.buffer.size = 4096;  // Increase for larger payloads
 ```
 
-## Migration from Arduino
+## Key API Differences
 
-If migrating from Arduino framework:
+When working with ESP-IDF:
 
-1. Replace `Serial.println()` with `ESP_LOGI(TAG, ...)`
-2. Replace `String` with `std::string`
-3. Replace `millis()` with `esp_timer_get_time() / 1000`
-4. Replace `delay()` with `vTaskDelay(pdMS_TO_TICKS(ms))`
-5. Replace Arduino WiFi with ESP-IDF WiFi APIs
-6. Replace PubSubClient with esp-mqtt
+**Logging**:
+- Use `ESP_LOGI(TAG, ...)`, `ESP_LOGD(TAG, ...)`, etc.
+- Define TAG: `static const char *TAG = "ComponentName";`
 
-See `MIGRATION_GUIDE.md` for detailed migration instructions.
+**Strings**:
+- Use `std::string` or C strings
+- No Arduino `String` class
+
+**Timing**:
+- `esp_timer_get_time()` for microseconds
+- `esp_timer_get_time() / 1000` for milliseconds
+- `vTaskDelay(pdMS_TO_TICKS(ms))` instead of `delay()`
+
+**Entry Point**:
+- `extern "C" void app_main(void)` instead of `setup()` and `loop()`
+
+**WiFi**:
+- Use `esp_wifi.h` and `esp_netif.h`
+- Event-driven architecture
+
+**MQTT**:
+- Use `mqtt_client.h` from esp-mqtt component
+- Native MQTT5 support
+
+See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for detailed information.
 
 ## Resources
 
