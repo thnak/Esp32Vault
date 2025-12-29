@@ -5,6 +5,7 @@ idf_component_register(
         "MQTTManager.cpp"
         "OTAManager.cpp"
         "SignalTelemetry.cpp"
+        "PSRAMBufferManager.cpp"
     INCLUDE_DIRS 
         "."
     REQUIRES 
