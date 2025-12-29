@@ -17,4 +17,5 @@ idf_component_register(
         mqtt
         driver
         esp_timer
+        json
 )

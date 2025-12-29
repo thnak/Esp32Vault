@@ -33,9 +33,9 @@ private:
     RawPacket* buffer;
     
     // Circular buffer indices
-    volatile uint32_t writeIndex;
-    volatile uint32_t readIndex;
-    volatile uint32_t count;  // Number of packets in buffer
+    uint32_t writeIndex;
+    uint32_t readIndex;
+    uint32_t count;  // Number of packets in buffer
     
     // Statistics
     uint32_t droppedPackets;  // Counter for oldest-drop events
