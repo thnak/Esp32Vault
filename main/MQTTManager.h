@@ -16,6 +16,9 @@ typedef std::function<void(std::string topic, std::string payload, size_t payloa
 #define CONTENT_TYPE_DIAG_SIGNAL   "application/vnd.esp32vault.signal.diag+bin"
 #define CONTENT_TYPE_JSON          "application/json"
 
+// MQTT5 Message Expiry for Telemetry (seconds)
+#define MESSAGE_EXPIRY_TELEMETRY_SECONDS  60
+
 class MQTTManager {
 private:
     esp_mqtt_client_handle_t mqttClient;

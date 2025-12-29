@@ -163,6 +163,7 @@ void MQTTManager::publish(const std::string& topic, const std::string& payload, 
         // Set MQTT5 publish properties
         esp_mqtt5_client_set_publish_property(mqttClient, &publish_property);
         
+        // Enqueue with store=true to ensure delivery even if offline
         int msg_id = esp_mqtt_client_enqueue(mqttClient, topic.c_str(), 
                                             payload.c_str(), payload.length(), 
                                             0, retained ? 1 : 0, true);
@@ -196,7 +197,7 @@ void MQTTManager::publishBinary(const std::string& topic, const uint8_t* payload
         // Set MQTT5 publish properties
         esp_mqtt5_client_set_publish_property(mqttClient, &publish_property);
         
-        // Use enqueue for MQTT5 with properties
+        // Enqueue with store=true to ensure delivery even if offline
         int msg_id = esp_mqtt_client_enqueue(mqttClient, topic.c_str(), 
                                             (const char*)payload, length, 
                                             0, retained ? 1 : 0, true);

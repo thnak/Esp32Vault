@@ -326,9 +326,9 @@ void SignalTelemetry::publishRawBatch(const RawPacket* batch) {
     size_t payloadSize = headerSize + (batch->count * sizeof(RawEdge));
     
     // Publish binary payload with MQTT5 properties
-    // Set message expiry to 60 seconds for time-sensitive telemetry
+    // Set message expiry for time-sensitive telemetry
     mqttManager->publishBinary(topic, (const uint8_t*)batch, payloadSize, 
-                              CONTENT_TYPE_RAW_SIGNAL, false, 60);
+                              CONTENT_TYPE_RAW_SIGNAL, false, MESSAGE_EXPIRY_TELEMETRY_SECONDS);
 }
 
 void SignalTelemetry::publishPulse(const PulsePacket* pulse) {
@@ -340,9 +340,9 @@ void SignalTelemetry::publishPulse(const PulsePacket* pulse) {
     std::string topic = "pulse/" + std::to_string(pulse->pinId);
     
     // Publish binary pulse packet with MQTT5 properties
-    // Set message expiry to 60 seconds for time-sensitive telemetry
+    // Set message expiry for time-sensitive telemetry
     mqttManager->publishBinary(topic, (const uint8_t*)pulse, sizeof(PulsePacket), 
-                              CONTENT_TYPE_PULSE_SIGNAL, false, 60);
+                              CONTENT_TYPE_PULSE_SIGNAL, false, MESSAGE_EXPIRY_TELEMETRY_SECONDS);
 }
 
 void SignalTelemetry::publishDiagnostics() {
