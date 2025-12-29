@@ -32,17 +32,21 @@ ESP32 Vault captures all signal changes with maximum accuracy and minimal proces
 - **MQTT-based Configuration**: Configure WiFi credentials via MQTT commands
 - **Persistent Storage**: WiFi credentials stored in ESP32 preferences
 
-### 2. MQTT Integration
+### 2. MQTT Integration (MQTT 5.0)
+- **MQTT5 Protocol**: Full MQTT 5.0 support with properties
+- **Content-Type Properties**: Automatic content type identification for all messages
+- **Message Expiry**: Time-sensitive telemetry expires after 60 seconds
 - **Binary & Text Support**: Supports both binary signal data and JSON commands
+- **Payload Format Indicator**: Proper binary (0) and UTF-8 (1) format indicators
 - **Auto-reconnection**: Automatic reconnection to MQTT broker
 - **Dynamic Configuration**: MQTT settings can be configured via MQTT messages
 - **MAC-based Client ID**: Uses device MAC address as MQTT client ID
 - **Topic Structure**: 
-  - `raw/{pin}` - Raw edge batches (binary)
-  - `pulse/{pin}` - Pulse width measurements (binary)
-  - `diag` - Diagnostic data (binary)
-  - `heartbeat` - Device heartbeat (JSON)
-  - `esp32vault/{mac}/status` - Device status and telemetry (JSON)
+  - `raw/{pin}` - Raw edge batches (binary, `application/vnd.esp32vault.signal.raw+bin`)
+  - `pulse/{pin}` - Pulse width measurements (binary, `application/vnd.esp32vault.signal.pulse+bin`)
+  - `diag` - Diagnostic data (binary, `application/vnd.esp32vault.signal.diag+bin`)
+  - `heartbeat` - Device heartbeat (JSON, `application/json`)
+  - `esp32vault/{mac}/status` - Device status and telemetry (JSON, `application/json`)
   - `esp32vault/{mac}/cmd/#` - Command topics
 
 ### 3. OTA (Over-The-Air) Updates
@@ -446,6 +450,7 @@ idf.py build
 ## Documentation
 
 - **[SIGNAL_TELEMETRY.md](SIGNAL_TELEMETRY.md)** - Complete signal telemetry documentation
+- **[MQTT5_IMPLEMENTATION.md](MQTT5_IMPLEMENTATION.md)** - MQTT5 features and implementation guide
 - **[ESP_IDF_BUILD.md](ESP_IDF_BUILD.md)** - Detailed ESP-IDF build instructions
 - **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Migration from old InputManager system
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture details
