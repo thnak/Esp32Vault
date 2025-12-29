@@ -35,8 +35,12 @@ void MQTTManager::begin() {
         
         // Construct proper MQTT URI if not already formatted
         std::string mqttUri;
-        if (mqttServer.find("://") == std::string::npos) {
-            // No scheme found, add mqtt:// or mqtts:// based on port
+        
+        // Check if URI already has mqtt:// or mqtts:// scheme
+        bool hasScheme = (mqttServer.find("mqtt://") == 0 || mqttServer.find("mqtts://") == 0);
+        
+        if (!hasScheme) {
+            // No scheme found, construct full URI with scheme and port
             // Port 8883 is the standard MQTT over TLS port
             if (mqttPort == 8883) {
                 mqttUri = "mqtts://" + mqttServer + ":" + std::to_string(mqttPort);
@@ -44,8 +48,14 @@ void MQTTManager::begin() {
                 mqttUri = "mqtt://" + mqttServer + ":" + std::to_string(mqttPort);
             }
         } else {
-            // Scheme already present, use as-is
-            mqttUri = mqttServer;
+            // Scheme already present, check if port needs to be appended
+            if (mqttServer.find(":", 8) == std::string::npos) {
+                // No port in URI, append it
+                mqttUri = mqttServer + ":" + std::to_string(mqttPort);
+            } else {
+                // URI is complete, use as-is
+                mqttUri = mqttServer;
+            }
         }
         
         ESP_LOGI(TAG, "Connecting to MQTT broker: %s", mqttUri.c_str());
