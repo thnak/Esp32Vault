@@ -3,6 +3,7 @@
 #include "PSRAMBufferManager.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include <cstring>
 
 static const char *TAG = "SignalTelemetry";
 
@@ -371,7 +372,7 @@ void SignalTelemetry::publishRawBatch(const RawPacket* batch) {
     }
     
     uint8_t pinId = batch->edges[0].pinId;
-    std::string topic = "raw/" + std::string(pinId);
+    std::string topic = "raw/" + std::to_string(pinId);
     
     // Calculate payload size
     size_t headerSize = sizeof(PacketHeader) + sizeof(uint64_t) + sizeof(uint32_t) + sizeof(uint8_t);
@@ -389,7 +390,7 @@ void SignalTelemetry::publishPulse(const PulsePacket* pulse) {
         return;
     }
     
-    std::string topic = "pulse/" + std::string(pulse->pinId);
+    std::string topic = "pulse/" + std::to_string(pulse->pinId);
     
     // Publish binary pulse packet
     mqttManager->publish(topic, (const uint8_t*)pulse, sizeof(PulsePacket), false);
