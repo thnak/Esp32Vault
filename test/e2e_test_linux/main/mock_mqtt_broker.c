@@ -127,7 +127,8 @@ bool mock_mqtt_broker_publish(mock_mqtt_broker_t* broker, const char* topic,
     // Deliver to matching subscribers
     for (int i = 0; i < MAX_MQTT_SUBSCRIBERS; i++) {
         if (broker->subscribers[i].active && 
-            topic_matches(broker->subscribers[i].topic, topic)) {
+            topic_matches(broker->subscribers[i].topic, topic) &&
+            broker->subscribers[i].callback != NULL) {
             broker->subscribers[i].callback(topic, payload, payload_len, 
                                            broker->subscribers[i].user_data);
         }

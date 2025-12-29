@@ -21,13 +21,29 @@ void app_main(void)
     printf("===========================================\n");
     printf("\n");
 
+    printf("Initializing Unity...\n");
+    fflush(stdout);
+    
     UNITY_BEGIN();
     
     // E2E Test Scenarios
     printf("\n--- E2E Test Scenarios ---\n");
+    fflush(stdout);
+    
+    printf("Running test_e2e_signal_to_mqtt...\n");
+    fflush(stdout);
     RUN_TEST(test_e2e_signal_to_mqtt);
+    
+    printf("Running test_e2e_psram_buffer_pressure...\n");
+    fflush(stdout);
     RUN_TEST(test_e2e_psram_buffer_pressure);
+    
+    printf("Running test_e2e_mqtt_reconnection...\n");
+    fflush(stdout);
     RUN_TEST(test_e2e_mqtt_reconnection);
+    
+    printf("Running test_e2e_mixed_signals...\n");
+    fflush(stdout);
     RUN_TEST(test_e2e_mixed_signals);
     
     UNITY_END();
