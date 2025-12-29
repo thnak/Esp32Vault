@@ -22,7 +22,13 @@ static bool topic_matches(const char* pattern, const char* topic)
         if (prefix_len > 0 && pattern[prefix_len - 1] == '/') {
             prefix_len--;
         }
-        return strncmp(pattern, topic, prefix_len) == 0;
+        // Only compare if there's a prefix to compare
+        if (prefix_len > 0) {
+            return strncmp(pattern, topic, prefix_len) == 0;
+        } else {
+            // Pattern is just "#" or "/#", match all
+            return true;
+        }
     }
     
     // Exact match
@@ -107,7 +113,7 @@ bool mock_mqtt_broker_publish(mock_mqtt_broker_t* broker, const char* topic,
     }
     
     // Check message log size
-    if (broker->message_count >= 256) {
+    if (broker->message_count >= MAX_MQTT_MESSAGE_LOG_SIZE) {
         return false;  // Log full
     }
     

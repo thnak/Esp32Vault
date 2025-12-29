@@ -21,6 +21,7 @@ extern "C" {
 #define MAX_MQTT_SUBSCRIBERS 16
 #define MAX_MQTT_TOPIC_LEN 128
 #define MAX_MQTT_PAYLOAD_SIZE 4096
+#define MAX_MQTT_MESSAGE_LOG_SIZE 256
 
 // Message structure for published messages
 typedef struct {
@@ -45,7 +46,7 @@ typedef struct {
 // Mock MQTT broker state
 typedef struct {
     mqtt_subscriber_t subscribers[MAX_MQTT_SUBSCRIBERS];
-    mqtt_message_t message_log[256];  // Log of all published messages
+    mqtt_message_t message_log[MAX_MQTT_MESSAGE_LOG_SIZE];  // Log of all published messages
     uint32_t message_count;
     bool connected;
     bool slow_mode;  // Simulate slow/blocked publishing

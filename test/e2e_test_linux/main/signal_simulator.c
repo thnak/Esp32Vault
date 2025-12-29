@@ -25,7 +25,7 @@ void signal_simulator_generate_square_wave(signal_simulator_t* sim, uint8_t pin,
     uint64_t end_time = start_time_us + duration_us;
     uint8_t current_value = 0;
     
-    while (current_time < end_time && sim->event_count < 1000) {
+    while (current_time < end_time && sim->event_count < MAX_SIGNAL_EVENTS) {
         sim_signal_event_t* event = &sim->events[sim->event_count];
         event->type = SIM_EVENT_EDGE_CHANGE;
         event->pin = pin;
@@ -50,7 +50,7 @@ void signal_simulator_generate_random_edges(signal_simulator_t* sim, uint8_t pin
     uint64_t current_time = start_time_us;
     uint8_t current_value = 0;
     
-    for (uint32_t i = 0; i < num_edges && sim->event_count < 1000; i++) {
+    for (uint32_t i = 0; i < num_edges && sim->event_count < MAX_SIGNAL_EVENTS; i++) {
         sim_signal_event_t* event = &sim->events[sim->event_count];
         event->type = SIM_EVENT_EDGE_CHANGE;
         event->pin = pin;
@@ -79,7 +79,7 @@ void signal_simulator_generate_pulses(signal_simulator_t* sim, uint8_t pin,
     
     uint64_t current_time = start_time_us;
     
-    for (uint32_t i = 0; i < num_pulses && sim->event_count < 1000; i++) {
+    for (uint32_t i = 0; i < num_pulses && sim->event_count < MAX_SIGNAL_EVENTS; i++) {
         sim_signal_event_t* event = &sim->events[sim->event_count];
         event->type = SIM_EVENT_PULSE;
         event->pin = pin;

@@ -30,9 +30,11 @@ typedef struct {
     uint32_t low_us;      // For pulse events: low duration
 } sim_signal_event_t;
 
+#define MAX_SIGNAL_EVENTS 1000
+
 // Signal simulator state
 typedef struct {
-    sim_signal_event_t events[1000];
+    sim_signal_event_t events[MAX_SIGNAL_EVENTS];
     uint32_t event_count;
     uint64_t current_time_us;
 } signal_simulator_t;

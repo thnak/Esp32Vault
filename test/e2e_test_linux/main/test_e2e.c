@@ -12,6 +12,13 @@
 #include "signal_simulator.h"
 
 // Import packet structures from SignalTelemetry
+// Binary packet structures (copied from main/SignalTelemetry.h for testing)
+// NOTE: These are intentionally duplicated here to ensure the test verifies
+// the actual binary layout independently. Any changes to main/SignalTelemetry.h
+// packet structures should be reflected here to maintain test validity.
+
+#define MAX_BATCH 50  // Must match SignalTelemetry.h MAX_BATCH
+
 #pragma pack(push, 1)
 
 struct PacketHeader {
@@ -30,7 +37,7 @@ struct RawPacket {
     uint64_t baseTimeUs;
     uint32_t baseSeq;
     uint8_t  count;
-    struct RawEdge edges[50]; // MAX_BATCH
+    struct RawEdge edges[MAX_BATCH];
 };
 
 struct PulsePacket {
