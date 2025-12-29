@@ -32,9 +32,9 @@ GPIO ISR → Ring Buffer → Collect Task (high pri) → Batch Queue → Publish
 
 ### Binary Protocol
 
-- **raw/{pinId}** - Edge batches (6 bytes/edge)
-- **pulse/{pinId}** - Pulse widths (23 bytes)
-- **diag** - Diagnostics (14 bytes)
+- **esp32vault/raw/{pinId}** - Edge batches (6 bytes/edge)
+- **esp32vault/pulse/{pinId}** - Pulse widths (23 bytes)
+- **esp32vault/diag** - Diagnostics (14 bytes)
 - **heartbeat** - Device status (JSON)
 
 ### Performance

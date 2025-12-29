@@ -239,8 +239,8 @@ void app_main(void)
     printf("\n");
     printf("Note: In real ESP32 operation, these binary\n");
     printf("packets are published to MQTT topics:\n");
-    printf("  - raw/{pin}   : Raw edge packets\n");
-    printf("  - pulse/{pin} : Pulse width packets\n");
-    printf("  - diag        : Diagnostic packets\n");
+    printf("  - esp32vault/raw/{pin}   : Raw edge packets\n");
+    printf("  - esp32vault/pulse/{pin} : Pulse width packets\n");
+    printf("  - esp32vault/diag        : Diagnostic packets\n");
     printf("\n");
 }
