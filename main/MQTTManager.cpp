@@ -49,11 +49,18 @@ void MQTTManager::begin() {
             }
         } else {
             // Scheme already present, check if port needs to be appended
-            if (mqttServer.find(":", 8) == std::string::npos) {
-                // No port in URI, append it
-                mqttUri = mqttServer + ":" + std::to_string(mqttPort);
+            size_t schemeEnd = mqttServer.find("://");
+            if (schemeEnd != std::string::npos) {
+                // Check for port after the scheme
+                if (mqttServer.find(":", schemeEnd + 3) == std::string::npos) {
+                    // No port in URI, append it
+                    mqttUri = mqttServer + ":" + std::to_string(mqttPort);
+                } else {
+                    // URI is complete, use as-is
+                    mqttUri = mqttServer;
+                }
             } else {
-                // URI is complete, use as-is
+                // Shouldn't happen if hasScheme is true, but handle gracefully
                 mqttUri = mqttServer;
             }
         }

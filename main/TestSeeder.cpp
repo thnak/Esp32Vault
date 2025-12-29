@@ -112,7 +112,7 @@ void TestSeeder::publishRawPacket() {
                                CONTENT_TYPE_RAW_SIGNAL, false, 
                                MESSAGE_EXPIRY_TELEMETRY_SECONDS);
     
-    ESP_LOGD(TAG, "Published raw packet: %d edges, seq=%lu", packet.count, packet.baseSeq);
+    ESP_LOGD(TAG, "Published raw packet: %d edges, seq=%u", packet.count, (unsigned)packet.baseSeq);
 }
 
 void TestSeeder::publishPulsePacket() {
@@ -141,8 +141,8 @@ void TestSeeder::publishPulsePacket() {
                                CONTENT_TYPE_PULSE_SIGNAL, false,
                                MESSAGE_EXPIRY_TELEMETRY_SECONDS);
     
-    ESP_LOGD(TAG, "Published pulse packet: high=%luus, low=%luus, seq=%lu", 
-             packet.highUs, packet.lowUs, packet.seq);
+    ESP_LOGD(TAG, "Published pulse packet: high=%uus, low=%uus, seq=%u", 
+             (unsigned)packet.highUs, (unsigned)packet.lowUs, (unsigned)packet.seq);
 }
 
 void TestSeeder::publishDiagPacket() {
