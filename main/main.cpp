@@ -254,6 +254,11 @@ void publishDeviceInfo() {
     cJSON_AddNumberToObject(json, "dropped_pulse", diag.droppedPulse);
     cJSON_AddNumberToObject(json, "queue_depth", diag.queueDepth);
     
+    // Add PSRAM buffer statistics
+    cJSON_AddNumberToObject(json, "psram_buffer_count", signalTelemetry.getPSRAMBufferCount());
+    cJSON_AddNumberToObject(json, "psram_buffer_dropped", signalTelemetry.getPSRAMDroppedCount());
+    cJSON_AddNumberToObject(json, "psram_buffer_usage_pct", signalTelemetry.getPSRAMUsagePercent());
+    
     char *output = cJSON_Print(json);
     mqttManager.publishStatus(output);
     free(output);

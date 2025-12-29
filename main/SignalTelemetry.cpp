@@ -1,14 +1,23 @@
 #include "SignalTelemetry.h"
 #include "MQTTManager.h"
+#include "PSRAMBufferManager.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 
 static const char *TAG = "SignalTelemetry";
+
+// Helper function for milliseconds timestamp
+static inline unsigned long millis() {
+    return (unsigned long)(esp_timer_get_time() / 1000ULL);
+}
 
 // Static member initialization
 std::map<uint8_t, SignalTelemetry*> SignalTelemetry::isrHandlers;
 
 SignalTelemetry::SignalTelemetry() 
-    : mqttManager(nullptr), seq(0), droppedRaw(0), droppedPulse(0), rmtOverflow(0),
+    : mqttManager(nullptr), psramBuffer(nullptr), seq(0), droppedRaw(0), droppedPulse(0), rmtOverflow(0),
+      mqttState(MQTTState::DISCONNECTED), lastPublishSuccess(0), lastPublishAttempt(0),
+      replayInProgress(false), replayTaskHandle(nullptr),
       signalRingBuffer(nullptr), batchQueue(nullptr), 
       collectTaskHandle(nullptr), publishTaskHandle(nullptr) {
 }
@@ -16,13 +25,16 @@ SignalTelemetry::SignalTelemetry()
 SignalTelemetry::~SignalTelemetry() {
     // Cleanup interrupts and RMT
     for (auto& pair : configuredPins) {
-        detachInterrupt(digitalPinToInterrupt(pair.first));
+        gpio_isr_handler_remove((gpio_num_t)pair.first);
         if (pair.second.useRMT) {
             cleanupRMT(pair.first);
         }
     }
     
     // Delete tasks
+    if (replayTaskHandle != nullptr) {
+        vTaskDelete(replayTaskHandle);
+    }
     if (collectTaskHandle != nullptr) {
         vTaskDelete(collectTaskHandle);
     }
@@ -37,11 +49,26 @@ SignalTelemetry::~SignalTelemetry() {
     if (batchQueue != nullptr) {
         vQueueDelete(batchQueue);
     }
+    
+    // Delete PSRAM buffer
+    if (psramBuffer != nullptr) {
+        delete psramBuffer;
+    }
 }
 
-void SignalTelemetry::begin(MQTTManager* mqtt, const String& macAddr) {
+void SignalTelemetry::begin(MQTTManager* mqtt, const std::string& macAddr) {
     mqttManager = mqtt;
     macAddress = macAddr;
+    
+    // Initialize PSRAM buffer
+    psramBuffer = new PSRAMBufferManager();
+    if (!psramBuffer->begin()) {
+        ESP_LOGE(TAG, "CRITICAL: PSRAM buffer initialization failed - offline buffering disabled!");
+        delete psramBuffer;
+        psramBuffer = nullptr;
+    } else {
+        ESP_LOGI(TAG, "PSRAM offline buffer initialized successfully");
+    }
     
     // Create lock-free ring buffer for ISR events
     signalRingBuffer = xRingbufferCreate(RING_BUFFER_SIZE, RINGBUF_TYPE_NOSPLIT);
@@ -53,7 +80,7 @@ void SignalTelemetry::begin(MQTTManager* mqtt, const String& macAddr) {
     // Create batch queue
     batchQueue = xQueueCreate(BATCH_QUEUE_SIZE, sizeof(RawPacket));
     if (batchQueue == nullptr) {
-        ESP_LOGI(TAG,("ERROR: Failed to create batch queue");
+        ESP_LOGE(TAG, "ERROR: Failed to create batch queue");
         return;
     }
     
@@ -68,7 +95,7 @@ void SignalTelemetry::begin(MQTTManager* mqtt, const String& macAddr) {
     );
     
     if (result != pdPASS) {
-        ESP_LOGI(TAG,("ERROR: Failed to create signal collect task");
+        ESP_LOGE(TAG, "ERROR: Failed to create signal collect task");
         return;
     }
     
@@ -83,11 +110,11 @@ void SignalTelemetry::begin(MQTTManager* mqtt, const String& macAddr) {
     );
     
     if (result != pdPASS) {
-        ESP_LOGI(TAG,("ERROR: Failed to create signal publish task");
+        ESP_LOGE(TAG, "ERROR: Failed to create signal publish task");
         return;
     }
     
-    ESP_LOGI(TAG,("SignalTelemetry initialized");
+    ESP_LOGI(TAG, "SignalTelemetry initialized");
 }
 
 void SignalTelemetry::loop() {
@@ -113,37 +140,49 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
     config.captureRaw = captureRaw;
     config.capturePulse = capturePulse;
     config.useRMT = useRMT;
-    config.rawTopic = "raw/" + std::string(pin);
-    config.pulseTopic = "pulse/" + std::string(pin);
+    config.rawTopic = "raw/" + std::to_string(pin);
+    config.pulseTopic = "pulse/" + std::to_string(pin);
     
-    // Configure hardware
-    pinMode(pin, INPUT);
+    // Configure hardware using ESP-IDF GPIO API
+    gpio_config_t io_conf = {};
+    io_conf.intr_type = GPIO_INTR_ANYEDGE;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pin_bit_mask = (1ULL << pin);
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    gpio_config(&io_conf);
     
     // Setup RMT if requested and capturing pulse
     if (capturePulse && useRMT) {
         // Try to allocate RMT channel (0-7 available on ESP32)
         // For simplicity, use pin number modulo 8 as channel
-        rmt_channel_t channel = (rmt_channel_t)(pin % 8);
-        if (configureRMT(pin, channel)) {
-            config.rmtChannel = channel;
+        if (configureRMT(pin, &config.rmtChannel)) {
+            // RMT configured successfully
         } else {
-            ESP_LOGI(TAG,("WARNING: RMT configuration failed for pin " + std::string(pin) + ", using ISR fallback");
+            ESP_LOGW(TAG, "RMT configuration failed for pin %d, using ISR fallback", pin);
             config.useRMT = false;
         }
     }
     
     // Attach interrupt for raw edge capture (always attach if captureRaw or capturePulse without RMT)
     if (captureRaw || (capturePulse && !config.useRMT)) {
+        // Install ISR service if not already installed
+        static bool isrServiceInstalled = false;
+        if (!isrServiceInstalled) {
+            gpio_install_isr_service(0);
+            isrServiceInstalled = true;
+        }
+        
         isrHandlers[pin] = this;
-        attachInterruptArg(digitalPinToInterrupt(pin), edgeISR, (void*)(uintptr_t)pin, CHANGE);
+        gpio_isr_handler_add((gpio_num_t)pin, edgeISR, (void*)(uintptr_t)pin);
     }
     
     configuredPins[pin] = config;
     
-    ESP_LOGI(TAG,("Pin " + std::string(pin) + " configured for signal telemetry");
-    ESP_LOGI(TAG,("  Raw: " + std::string(captureRaw ? "Yes" : "No"));
-    ESP_LOGI(TAG,("  Pulse: " + std::string(capturePulse ? "Yes" : "No"));
-    ESP_LOGI(TAG,("  RMT: " + std::string(config.useRMT ? "Yes" : "No"));
+    ESP_LOGI(TAG, "Pin %d configured for signal telemetry", pin);
+    ESP_LOGI(TAG, "  Raw: %s", captureRaw ? "Yes" : "No");
+    ESP_LOGI(TAG, "  Pulse: %s", capturePulse ? "Yes" : "No");
+    ESP_LOGI(TAG, "  RMT: %s", config.useRMT ? "Yes" : "No");
     
     return true;
 }
@@ -155,7 +194,7 @@ bool SignalTelemetry::removePin(uint8_t pin) {
     }
     
     // Detach interrupt
-    detachInterrupt(digitalPinToInterrupt(pin));
+    gpio_isr_handler_remove((gpio_num_t)pin);
     isrHandlers.erase(pin);
     
     // Cleanup RMT if used
@@ -165,7 +204,7 @@ bool SignalTelemetry::removePin(uint8_t pin) {
     
     configuredPins.erase(it);
     
-    ESP_LOGI(TAG,("Pin " + std::string(pin) + " removed from signal telemetry");
+    ESP_LOGI(TAG, "Pin %d removed from signal telemetry", pin);
     return true;
 }
 
@@ -180,7 +219,7 @@ void IRAM_ATTR SignalTelemetry::edgeISR(void* arg) {
     SignalTelemetry* instance = it->second;
     
     // Read value and timestamp with minimal latency
-    uint8_t value = digitalRead(pin);
+    uint8_t value = gpio_get_level((gpio_num_t)pin);
     uint64_t timeUs = esp_timer_get_time();
     
     // Create event
@@ -302,7 +341,20 @@ void SignalTelemetry::publishTaskFunction(void* parameter) {
     while (true) {
         // Wait for batch to publish
         if (xQueueReceive(instance->batchQueue, &batch, portMAX_DELAY) == pdTRUE) {
-            instance->publishRawBatch(&batch);
+            // Update MQTT state
+            instance->updateMQTTState();
+            
+            // Decision logic based on MQTT state
+            if (instance->shouldUseDirectPublish()) {
+                // Try direct publish
+                if (!instance->tryDirectPublish(&batch)) {
+                    // Direct publish failed, spill to PSRAM
+                    instance->spillToPSRAM(&batch);
+                }
+            } else {
+                // MQTT is slow or down, spill to PSRAM
+                instance->spillToPSRAM(&batch);
+            }
         }
     }
 }
@@ -358,11 +410,11 @@ void SignalTelemetry::publishDiagnostics() {
     
     mqttManager->publish("diag", (const uint8_t*)&diag, sizeof(DiagPacket), false);
     
-    ESP_LOGI(TAG,("Diagnostics published:");
-    ESP_LOGI(TAG,("  Dropped Raw: " + std::string(diag.droppedRaw));
-    ESP_LOGI(TAG,("  Dropped Pulse: " + std::string(diag.droppedPulse));
-    ESP_LOGI(TAG,("  Queue Depth: " + std::string(diag.queueDepth));
-    ESP_LOGI(TAG,("  RMT Overflow: " + std::string(diag.rmtOverflow));
+    ESP_LOGI(TAG, "Diagnostics published:");
+    ESP_LOGI(TAG, "  Dropped Raw: %d", diag.droppedRaw);
+    ESP_LOGI(TAG, "  Dropped Pulse: %d", diag.droppedPulse);
+    ESP_LOGI(TAG, "  Queue Depth: %d", diag.queueDepth);
+    ESP_LOGI(TAG, "  RMT Overflow: %d", diag.rmtOverflow);
 }
 
 void SignalTelemetry::publishHeartbeat() {
@@ -370,7 +422,7 @@ void SignalTelemetry::publishHeartbeat() {
         return;
     }
     
-    std::string payload = "{\"mac\":\"" + macAddress + "\",\"seq\":" + std::string(seq) + ",\"uptime\":" + std::string(millis()/1000) + "}";
+    std::string payload = "{\"mac\":\"" + macAddress + "\",\"seq\":" + std::to_string(seq) + ",\"uptime\":" + std::to_string(millis()/1000) + "}";
     mqttManager->publish("heartbeat", payload, false);
 }
 
@@ -387,7 +439,7 @@ void SignalTelemetry::onBoot() {
     // Publish initial diagnostics
     publishDiagnostics();
     
-    ESP_LOGI(TAG,("SignalTelemetry boot sequence complete");
+    ESP_LOGI(TAG, "SignalTelemetry boot sequence complete");
 }
 
 uint32_t SignalTelemetry::getNextSeq() {
@@ -405,46 +457,169 @@ DiagPacket SignalTelemetry::getDiagnostics() {
     return diag;
 }
 
-bool SignalTelemetry::configureRMT(uint8_t pin, rmt_channel_t channel) {
-    rmt_config_t config;
-    config.rmt_mode = RMT_MODE_RX;
-    config.channel = channel;
-    config.gpio_num = (gpio_num_t)pin;
-    config.clk_div = 80; // 1us resolution (80MHz / 80 = 1MHz)
-    config.mem_block_num = 1;
-    config.flags = 0;
+void SignalTelemetry::updateMQTTState() {
+    if (mqttManager == nullptr || !mqttManager->isConnected()) {
+        mqttState = MQTTState::DISCONNECTED;
+        
+        // Start replay when MQTT reconnects
+        if (!replayInProgress && psramBuffer != nullptr && psramBuffer->getCount() > 0) {
+            ESP_LOGI(TAG, "MQTT reconnected, starting replay task");
+            startReplay();
+        }
+        return;
+    }
     
-    config.rx_config.filter_en = false;
-    config.rx_config.filter_ticks_thresh = 0;
-    config.rx_config.idle_threshold = 65535; // Max idle threshold
+    // MQTT is connected, check if it's fast or slow
+    unsigned long now = millis();
+    if (lastPublishAttempt > 0 && (now - lastPublishAttempt) > MQTT_SLOW_THRESHOLD_MS) {
+        mqttState = MQTTState::CONNECTED_SLOW;
+        ESP_LOGW(TAG, "MQTT appears slow (>%lu ms since last attempt)", MQTT_SLOW_THRESHOLD_MS);
+    } else {
+        mqttState = MQTTState::CONNECTED_FAST;
+    }
+}
+
+bool SignalTelemetry::shouldUseDirectPublish() const {
+    // Only use direct publish if MQTT is connected and fast
+    // AND there's no backlog in PSRAM (replay has priority)
+    if (mqttState == MQTTState::CONNECTED_FAST) {
+        if (psramBuffer != nullptr && psramBuffer->getCount() > 0) {
+            // Has backlog, replay first
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool SignalTelemetry::tryDirectPublish(const RawPacket* batch) {
+    lastPublishAttempt = millis();
     
-    esp_err_t err = rmt_config(&config);
-    if (err != ESP_OK) {
-        ESP_LOGI(TAG,("ERROR: RMT config failed: " + std::string(err));
+    if (mqttManager == nullptr || !mqttManager->isConnected()) {
         return false;
     }
     
-    err = rmt_driver_install(channel, 1000, 0);
-    if (err != ESP_OK) {
-        ESP_LOGI(TAG,("ERROR: RMT driver install failed: " + std::string(err));
-        return false;
-    }
+    // Attempt to publish
+    publishRawBatch(batch);
     
-    // Start receiving
-    err = rmt_rx_start(channel, true);
-    if (err != ESP_OK) {
-        ESP_LOGI(TAG,("ERROR: RMT rx start failed: " + std::string(err));
-        rmt_driver_uninstall(channel);
-        return false;
-    }
-    
+    lastPublishSuccess = millis();
     return true;
 }
 
-void SignalTelemetry::cleanupRMT(uint8_t pin) {
-    auto it = configuredPins.find(pin);
-    if (it != configuredPins.end() && it->second.useRMT) {
-        rmt_rx_stop(it->second.rmtChannel);
-        rmt_driver_uninstall(it->second.rmtChannel);
+void SignalTelemetry::spillToPSRAM(const RawPacket* batch) {
+    if (psramBuffer == nullptr) {
+        // No PSRAM available, must drop
+        droppedRaw += batch->count;
+        ESP_LOGW(TAG, "No PSRAM buffer, dropping %d edges", batch->count);
+        return;
     }
+    
+    // Enqueue to PSRAM
+    if (!psramBuffer->enqueue(batch)) {
+        droppedRaw += batch->count;
+        ESP_LOGE(TAG, "Failed to enqueue to PSRAM, dropping %d edges", batch->count);
+    }
+}
+
+void SignalTelemetry::startReplay() {
+    if (replayInProgress || psramBuffer == nullptr) {
+        return;
+    }
+    
+    replayInProgress = true;
+    
+    // Create replay task with low priority (lower than publish task)
+    BaseType_t result = xTaskCreate(
+        replayTaskFunction,
+        "SignalReplay",
+        4096,
+        this,
+        2,  // Lower priority than publish task
+        &replayTaskHandle
+    );
+    
+    if (result != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create replay task");
+        replayInProgress = false;
+    }
+}
+
+void SignalTelemetry::stopReplay() {
+    if (!replayInProgress) {
+        return;
+    }
+    
+    if (replayTaskHandle != nullptr) {
+        vTaskDelete(replayTaskHandle);
+        replayTaskHandle = nullptr;
+    }
+    
+    replayInProgress = false;
+    ESP_LOGI(TAG, "Replay task stopped");
+}
+
+void SignalTelemetry::replayTaskFunction(void* parameter) {
+    SignalTelemetry* instance = static_cast<SignalTelemetry*>(parameter);
+    
+    ESP_LOGI(TAG, "Replay task started, packets to replay: %d", 
+             instance->psramBuffer->getCount());
+    
+    while (instance->psramBuffer != nullptr && instance->psramBuffer->getCount() > 0) {
+        // Check if MQTT is still connected
+        if (instance->mqttManager == nullptr || !instance->mqttManager->isConnected()) {
+            ESP_LOGW(TAG, "MQTT disconnected during replay, pausing");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;
+        }
+        
+        // Dequeue packet from PSRAM
+        const RawPacket* packet = instance->psramBuffer->dequeue();
+        if (packet == nullptr) {
+            break;
+        }
+        
+        // Create a copy since dequeue returns pointer to internal buffer
+        RawPacket packetCopy;
+        memcpy(&packetCopy, packet, sizeof(RawPacket));
+        
+        // Publish the packet
+        instance->publishRawBatch(&packetCopy);
+        
+        // Small delay to avoid flooding
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    
+    ESP_LOGI(TAG, "Replay completed, replayed: %d packets", 
+             instance->psramBuffer->getTotalReplayed());
+    
+    // Mark replay as done
+    instance->replayInProgress = false;
+    instance->replayTaskHandle = nullptr;
+    
+    // Delete self
+    vTaskDelete(NULL);
+}
+
+uint32_t SignalTelemetry::getPSRAMBufferCount() const {
+    return psramBuffer ? psramBuffer->getCount() : 0;
+}
+
+uint32_t SignalTelemetry::getPSRAMDroppedCount() const {
+    return psramBuffer ? psramBuffer->getDroppedCount() : 0;
+}
+
+float SignalTelemetry::getPSRAMUsagePercent() const {
+    return psramBuffer ? psramBuffer->getUsagePercent() : 0.0f;
+}
+
+bool SignalTelemetry::configureRMT(uint8_t pin, rmt_channel_handle_t* channel) {
+    // RMT configuration using new ESP-IDF v5.x API
+    // For simplicity, RMT is currently disabled - using ISR fallback
+    // TODO: Implement new RMT RX API when pulse width measurement is needed
+    ESP_LOGW(TAG, "RMT not implemented in this version, using ISR fallback");
+    return false;
+}
+
+void SignalTelemetry::cleanupRMT(uint8_t pin) {
+    // No cleanup needed as RMT is not implemented yet
 }

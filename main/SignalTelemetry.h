@@ -13,8 +13,9 @@
 #include <map>
 #include <vector>
 
-// Forward declaration
+// Forward declarations
 class MQTTManager;
+class PSRAMBufferManager;
 
 // Binary packet structures
 #pragma pack(push, 1)
@@ -86,6 +87,7 @@ struct SignalPinConfig {
 class SignalTelemetry {
 private:
     MQTTManager* mqttManager;
+    PSRAMBufferManager* psramBuffer;
     std::string macAddress;
     
     // Sequence counter (monotonic, reset on reboot)
@@ -95,6 +97,21 @@ private:
     uint32_t droppedRaw;
     uint32_t droppedPulse;
     uint16_t rmtOverflow;
+    
+    // MQTT connection state tracking
+    enum class MQTTState {
+        DISCONNECTED,
+        CONNECTED_FAST,
+        CONNECTED_SLOW
+    };
+    MQTTState mqttState;
+    unsigned long lastPublishSuccess;
+    unsigned long lastPublishAttempt;
+    static const unsigned long MQTT_SLOW_THRESHOLD_MS = 5000;  // If publish takes >5s, consider it slow
+    
+    // Replay state
+    bool replayInProgress;
+    TaskHandle_t replayTaskHandle;
     
     // Pin configurations
     std::map<uint8_t, SignalPinConfig> configuredPins;
@@ -118,6 +135,7 @@ private:
     static void IRAM_ATTR edgeISR(void* arg);
     static void collectTaskFunction(void* parameter);
     static void publishTaskFunction(void* parameter);
+    static void replayTaskFunction(void* parameter);
     
     void processBatch(RawPacket* batch);
     void publishRawBatch(const RawPacket* batch);
@@ -126,6 +144,16 @@ private:
     
     bool queueSignalEvent(const SignalEvent& event);
     uint32_t getNextSeq();
+    
+    // MQTT state management
+    void updateMQTTState();
+    bool shouldUseDirectPublish() const;
+    bool tryDirectPublish(const RawPacket* batch);
+    void spillToPSRAM(const RawPacket* batch);
+    
+    // Replay management
+    void startReplay();
+    void stopReplay();
     
     // RMT configuration for pulse width measurement
     bool configureRMT(uint8_t pin, rmt_channel_handle_t* channel);
@@ -144,6 +172,11 @@ public:
     
     // Get diagnostics
     DiagPacket getDiagnostics();
+    
+    // Get PSRAM buffer stats
+    uint32_t getPSRAMBufferCount() const;
+    uint32_t getPSRAMDroppedCount() const;
+    float getPSRAMUsagePercent() const;
     
     // Public methods for publishing
     void publishHeartbeat();
