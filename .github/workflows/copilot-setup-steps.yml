@@ -41,6 +41,11 @@ jobs:
           ~/esp/idf
           ~/.espressif
         key: esp-idf-v5.2-esp32-${{ runner.os }}
+        
+    - name: Install Host Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libbsd-dev python3-setuptools
     
     - name: Install ESP-IDF
       uses: espressif/install-esp-idf-action@v1
