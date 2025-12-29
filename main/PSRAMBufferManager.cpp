@@ -128,8 +128,16 @@ const RawPacket* PSRAMBufferManager::peek() const {
         return nullptr;
     }
     
-    // No mutex needed for peek (const operation)
-    return &buffer[readIndex];
+    // Take mutex for thread safety
+    if (xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+        return nullptr;
+    }
+    
+    const RawPacket* packet = &buffer[readIndex];
+    
+    xSemaphoreGive(mutex);
+    
+    return packet;
 }
 
 bool PSRAMBufferManager::isFull() const {

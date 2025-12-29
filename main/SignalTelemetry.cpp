@@ -459,14 +459,10 @@ DiagPacket SignalTelemetry::getDiagnostics() {
 }
 
 void SignalTelemetry::updateMQTTState() {
+    MQTTState previousState = mqttState;
+    
     if (mqttManager == nullptr || !mqttManager->isConnected()) {
         mqttState = MQTTState::DISCONNECTED;
-        
-        // Start replay when MQTT reconnects
-        if (!replayInProgress && psramBuffer != nullptr && psramBuffer->getCount() > 0) {
-            ESP_LOGI(TAG, "MQTT reconnected, starting replay task");
-            startReplay();
-        }
         return;
     }
     
@@ -478,6 +474,17 @@ void SignalTelemetry::updateMQTTState() {
     } else {
         mqttState = MQTTState::CONNECTED_FAST;
     }
+    
+    // Start replay when transitioning from DISCONNECTED to CONNECTED
+    if (previousState == MQTTState::DISCONNECTED && 
+        (mqttState == MQTTState::CONNECTED_FAST || mqttState == MQTTState::CONNECTED_SLOW)) {
+        if (!replayInProgress && psramBuffer != nullptr && psramBuffer->getCount() > 0) {
+            ESP_LOGI(TAG, "MQTT reconnected with %d buffered packets, starting replay task", 
+                     psramBuffer->getCount());
+            startReplay();
+        }
+    }
+}
 }
 
 bool SignalTelemetry::shouldUseDirectPublish() const {
