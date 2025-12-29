@@ -1,4 +1,5 @@
 #include "PSRAMBufferManager.h"
+#include "SignalTelemetry.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include <cstring>

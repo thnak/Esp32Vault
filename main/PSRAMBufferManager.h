@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
-#include "SignalTelemetry.h"
 
 // Forward declaration
 struct RawPacket;
