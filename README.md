@@ -155,6 +155,29 @@ idf.py -p /dev/ttyUSB0 flash monitor
 
 See [ESP_IDF_BUILD.md](ESP_IDF_BUILD.md) for detailed build instructions.
 
+### Linux Host Testing (Experimental)
+
+ESP32 Vault includes support for unit tests and demo applications that run on Linux without requiring ESP32 hardware:
+
+```bash
+# Run unit tests on Linux
+./build_and_test_linux.sh
+
+# Run demo application on Linux
+./build_and_run_demo_linux.sh
+```
+
+See [LINUX_HOST_TESTING.md](LINUX_HOST_TESTING.md) for comprehensive documentation on Linux host testing, including:
+- Detailed setup instructions
+- Technical background on ESP-IDF Linux target
+- Adding new tests
+- CI/CD integration
+- Troubleshooting guide
+
+For quick reference:
+- [test/host_test_linux/README.md](test/host_test_linux/README.md) - Unit test documentation
+- [demo/linux_demo/README.md](demo/linux_demo/README.md) - Demo application documentation
+
 ## Initial Setup
 
 ### WiFi Configuration

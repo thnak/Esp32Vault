@@ -1,0 +1,2 @@
+# ESP32 Vault - Linux Host Test Configuration
+CONFIG_IDF_TARGET="linux"
