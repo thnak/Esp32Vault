@@ -9,10 +9,10 @@
 #include <stdint.h>
 #include "unity.h"
 
-// Binary packet structures (copied from SignalTelemetry.h for testing)
+// Binary packet structures (copied from main/SignalTelemetry.h for testing)
 // NOTE: These are intentionally duplicated here to ensure the test verifies
-// the actual binary layout independently. Any changes to SignalTelemetry.h
-// structures should be reflected here to maintain test validity.
+// the actual binary layout independently. Any changes to main/SignalTelemetry.h
+// packet structures should be reflected here to maintain test validity.
 #pragma pack(push, 1)
 
 struct PacketHeader {
@@ -56,6 +56,7 @@ struct DiagPacket {
 void test_signal_telemetry_packet_serialization(void)
 {
     // Test that packet structures have correct sizes for binary serialization
+    const size_t MAX_BATCH = 50; // Must match SignalTelemetry.h MAX_BATCH
     
     // Header should be 2 bytes (version:1 + type:1)
     TEST_ASSERT_EQUAL_UINT(2, sizeof(struct PacketHeader));
@@ -63,8 +64,8 @@ void test_signal_telemetry_packet_serialization(void)
     // RawEdge should be 6 bytes (pinId:1 + value:1 + dtUs:4)
     TEST_ASSERT_EQUAL_UINT(6, sizeof(struct RawEdge));
     
-    // RawPacket header fields: 2 + 8 + 4 + 1 = 15 bytes base + (50 edges * 6 bytes each)
-    TEST_ASSERT_EQUAL_UINT(15 + (50 * 6), sizeof(struct RawPacket));
+    // RawPacket header fields: 2 + 8 + 4 + 1 = 15 bytes base + (MAX_BATCH edges * 6 bytes each)
+    TEST_ASSERT_EQUAL_UINT(15 + (MAX_BATCH * 6), sizeof(struct RawPacket));
     
     // PulsePacket: 2 + 1 + 4 + 4 + 8 + 4 = 23 bytes
     // (header:2 + pinId:1 + highUs:4 + lowUs:4 + deviceTimeUs:8 + seq:4)

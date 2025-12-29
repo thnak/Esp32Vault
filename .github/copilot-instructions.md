@@ -1,7 +1,7 @@
 # ESP32 Vault - Copilot Instructions
 
 ## Environment
-This environment uses espressif/idf:release-v5.4 container. You can use all available command dev tools from it like idf.py set-target, idf.py build.
+This environment uses the espressif/idf:release-v5.4 container. You can use all available command-line development tools from it like idf.py set-target, idf.py build.
 
 ## Project Overview
 ESP32 Vault is a signal telemetry system for ESP32 with ESP-IDF framework, featuring:

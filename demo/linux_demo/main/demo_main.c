@@ -11,10 +11,10 @@
 #include <time.h>
 #include <unistd.h>
 
-// Binary packet structures (same as SignalTelemetry)
+// Binary packet structures (same as main/SignalTelemetry.h)
 // NOTE: These are intentionally duplicated here for the demo to be self-contained
 // and demonstrate the exact binary format used by ESP32 Vault. Any changes to
-// SignalTelemetry.h structures should be reflected here.
+// main/SignalTelemetry.h packet structures should be reflected here.
 #pragma pack(push, 1)
 
 struct PacketHeader {
