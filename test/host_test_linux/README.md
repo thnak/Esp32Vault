@@ -33,8 +33,8 @@ cd test/host_test_linux
 # Set up ESP-IDF environment
 . $IDF_PATH/export.sh
 
-# Set target to Linux
-idf.py set-target linux
+# Set target to Linux (requires --preview flag as Linux target is experimental)
+idf.py --preview set-target linux
 
 # Build tests
 idf.py build

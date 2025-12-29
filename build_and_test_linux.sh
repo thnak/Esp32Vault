@@ -26,10 +26,10 @@ echo "Building tests..."
 if [ "$USE_DOCKER" = true ]; then
     docker run --rm -v "$SCRIPT_DIR":/project -w /project/test/host_test_linux \
         espressif/idf:release-v5.4 \
-        bash -c "idf.py set-target linux && idf.py build"
+        bash -c "idf.py --preview set-target linux && idf.py build"
 else
     cd "$TEST_DIR"
-    idf.py set-target linux
+    idf.py --preview set-target linux
     idf.py build
 fi
 
