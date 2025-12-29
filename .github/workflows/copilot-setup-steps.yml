@@ -36,4 +36,4 @@ jobs:
       with:
         esp_idf_version: v4.4
         target: esp32
-        path: 'Esp32Vault'
+        path: '/app/thnak/Esp32Vault'
