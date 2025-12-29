@@ -44,7 +44,7 @@ MQTT Publish Task (Priority: 3 - LOW)
 
 ### Client Identity
 
-- **Protocol**: MQTT 3.1.1 (targeting MQTT 5 in future)
+- **Protocol**: MQTT 5.0
 - **Client ID**: MAC address of ESP32 (e.g., `A0B1C2D3E4F5`)
 - **Clean Start**: true
 - **Keep Alive**: 60 seconds
@@ -58,15 +58,19 @@ diag               - Diagnostic information (binary)
 heartbeat          - Device heartbeat (JSON)
 ```
 
-### MQTT 5 Properties (Future)
+### MQTT 5 Properties
 
-For MQTT 5 compatibility, the following properties will be added:
+The following MQTT 5 properties are used for all publications:
 
-- **Payload Format Indicator**: 0 (binary)
+- **Payload Format Indicator**: 
+  - 0 (binary) for raw, pulse, and diag messages
+  - 1 (UTF-8) for heartbeat and status messages
 - **Content-Type**: 
   - `application/vnd.esp32vault.signal.raw+bin` for raw edges
   - `application/vnd.esp32vault.signal.pulse+bin` for pulse width
   - `application/vnd.esp32vault.signal.diag+bin` for diagnostics
+  - `application/json` for JSON messages (heartbeat, status)
+- **Message Expiry Interval**: 60 seconds for time-sensitive telemetry data (raw/pulse)
 
 ## Binary Payload Specification
 
@@ -400,7 +404,7 @@ The old `InputManager` has been replaced with `SignalTelemetry`. Key differences
 
 ## Future Enhancements
 
-1. **MQTT 5 Support** - Full MQTT 5 with properties
+1. **MQTT 5 User Properties** - Add custom user properties for metadata
 2. **TLS/SSL** - Secure MQTT connections
 3. **Multi-pin Pulse** - Correlate pulses across pins
 4. **Hardware Timestamps** - GPIO interrupt hardware timestamps

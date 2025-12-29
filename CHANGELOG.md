@@ -8,11 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **MQTT5 Full Implementation**: Complete MQTT 5.0 protocol support with properties
+  - Content-Type properties for all message types (raw, pulse, diag, JSON)
+  - Payload Format Indicator (0 for binary, 1 for UTF-8)
+  - Message Expiry Interval (60s) for time-sensitive telemetry data
+  - Custom vendor-specific content types for ESP32 Vault signals
+  - New `publishBinary()` method with MQTT5 property support
+  - Comprehensive MQTT5_IMPLEMENTATION.md documentation
+
 - **MQTT WiFi Configuration**: New `/cmd/wifi` topic for updating WiFi credentials via MQTT
   - Supports `ssid` and `password` parameters
   - Device automatically restarts after credentials are updated
 
 ### Changed
+- **MQTT Protocol**: Upgraded from MQTT 3.1.1 to MQTT 5.0
+  - All binary payloads now include proper Content-Type headers
+  - JSON messages explicitly marked with UTF-8 format indicator
+  - Telemetry data marked as time-sensitive with 60-second expiry
+
 - **WiFi Setup Method**: Replaced HTTP server-based WiFi configuration with default hotspot provisioning
   - Removed AP mode web interface
   - Device now connects to predefined hotspot (SSID: `EspSetup`, Password: `HeLooWod`) for initial setup

@@ -184,7 +184,7 @@ Total size: 14 bytes
 ✅ **Supports both RMT and ISR pulse measurement**
 ✅ **Prioritizes pulse data over raw edges**
 ✅ **Publishes binary payloads for efficiency**
-✅ **Uses MQTT5 with properties**
+✅ **Uses MQTT5 with full properties (Content-Type, Payload Format, Message Expiry)**
 ✅ **Maintains monotonic timestamps**
 
 ### What It Doesn't Do
@@ -327,12 +327,12 @@ This implementation fully complies with the **ESP32 Firmware Checksheet – Sign
 
 ## Future Enhancements
 
-- Full MQTT5 properties (Content-Type, Payload Format)
 - TLS/SSL for secure MQTT
 - Hardware timestamp capture (GPIO interrupt timestamps)
 - Optional payload compression (for bandwidth-constrained networks)
 - Multi-device pulse correlation
 - NTP time synchronization (optional)
+- MQTT5 User Properties for custom metadata
 - Web dashboard for monitoring
 
 ## Support
