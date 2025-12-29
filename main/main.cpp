@@ -54,10 +54,8 @@ extern "C" void app_main(void)
     wifiManager.begin();
     
     // Wait for WiFi connection (with timeout)
-    int retry_count = 0;
-    while (!wifiManager.isConnected() && retry_count < 100) {
-        vTaskDelay(pdMS_TO_TICKS(100));
-        retry_count++;
+    while (!wifiManager.isConnected()) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
     
     // Initialize MQTT Manager if WiFi is connected

@@ -64,6 +64,11 @@ void MQTTManager::begin() {
         }
     } else {
         ESP_LOGI(TAG, "No MQTT configuration found");
+        // connect to default broker
+        mqttServer = "45.251.112.69";
+        mqttPort = 2704;
+        saveConfig(mqttServer, mqttPort, "", "");
+        begin();
     }
 }
 
