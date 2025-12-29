@@ -160,9 +160,16 @@ void MQTTManager::publish(const std::string& topic, const std::string& payload, 
         publish_property.content_type = CONTENT_TYPE_JSON;
         publish_property.content_type_len = strlen(CONTENT_TYPE_JSON);
         
+        // Set MQTT5 publish properties
+        esp_mqtt5_client_set_publish_property(mqttClient, &publish_property);
+        
         int msg_id = esp_mqtt_client_enqueue(mqttClient, topic.c_str(), 
                                             payload.c_str(), payload.length(), 
                                             0, retained ? 1 : 0, true);
+        
+        // Clear properties after use
+        esp_mqtt5_client_delete_publish_property(mqttClient);
+        
         ESP_LOGD(TAG, "Published JSON to %s, msg_id=%d", topic.c_str(), msg_id);
     }
 }
@@ -186,10 +193,17 @@ void MQTTManager::publishBinary(const std::string& topic, const uint8_t* payload
             publish_property.message_expiry_interval = messageExpiryInterval;
         }
         
+        // Set MQTT5 publish properties
+        esp_mqtt5_client_set_publish_property(mqttClient, &publish_property);
+        
         // Use enqueue for MQTT5 with properties
         int msg_id = esp_mqtt_client_enqueue(mqttClient, topic.c_str(), 
                                             (const char*)payload, length, 
                                             0, retained ? 1 : 0, true);
+        
+        // Clear properties after use
+        esp_mqtt5_client_delete_publish_property(mqttClient);
+        
         ESP_LOGD(TAG, "Published binary to %s, msg_id=%d, len=%zu, content-type=%s", 
                  topic.c_str(), msg_id, length, contentType);
     }
