@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **MQTT URI Parsing**: Fixed "Error parse uri" when configuring MQTT broker with IP address or hostname
+  - Automatically adds `mqtt://` or `mqtts://` scheme prefix to server address
+  - Detects and preserves existing URI schemes to avoid double-prefixing
+  - Uses `mqtts://` for port 8883 (TLS), `mqtt://` for all other ports
+  - Updated documentation to clarify that server field should contain hostname or IP only
+
 ### Added
 - **MQTT5 Full Implementation**: Complete MQTT 5.0 protocol support with properties
   - Content-Type properties for all message types (raw, pulse, diag, JSON)
