@@ -22,7 +22,9 @@ ESP32 Vault captures all signal changes with maximum accuracy and minimal proces
 - **Binary Payloads**: Efficient packed binary format for signal data
 - **Batching System**: Intelligent batching (up to 50 edges per packet, 50ms max window)
 - **Flood Protection**: Priority-based queue with smart drop policies
-- **Diagnostic Monitoring**: Real-time tracking of drops, queue depth, and performance
+- **PSRAM Offline Buffer**: 4MB PSRAM buffer for offline telemetry when MQTT is unavailable
+- **Automatic Replay**: Buffered packets replayed in sequence order when connection restored
+- **Diagnostic Monitoring**: Real-time tracking of drops, queue depth, and PSRAM buffer usage
 - **Sequence Numbers**: Monotonic sequence for packet loss detection and reboot detection
 - **Microsecond Timestamps**: High-resolution monotonic timing from hardware timer
 
@@ -98,6 +100,7 @@ mosquitto_sub -h broker.example.com \
 
 For complete documentation, see:
 - **[SIGNAL_TELEMETRY.md](SIGNAL_TELEMETRY.md)** - Complete signal telemetry documentation
+- **[PSRAM_OFFLINE_BUFFER.md](PSRAM_OFFLINE_BUFFER.md)** - PSRAM offline buffering documentation
 - **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Migration from old InputManager system
 
 ## Project Structure
@@ -120,7 +123,7 @@ Esp32Vault/
 
 ### Prerequisites
 - ESP-IDF v5.x or later
-- ESP32 development board
+- ESP32 development board with PSRAM (4MB recommended)
 - USB cable for initial programming
 
 ### Building and Uploading
@@ -348,7 +351,10 @@ Example:
   "firmware_version": "Signal Telemetry v1",
   "dropped_raw": 0,
   "dropped_pulse": 0,
-  "queue_depth": 2
+  "queue_depth": 2,
+  "psram_buffer_count": 0,
+  "psram_buffer_dropped": 0,
+  "psram_buffer_usage_pct": 0.0
 }
 ```
 
@@ -446,6 +452,7 @@ idf.py build
 ## Documentation
 
 - **[SIGNAL_TELEMETRY.md](SIGNAL_TELEMETRY.md)** - Complete signal telemetry documentation
+- **[PSRAM_OFFLINE_BUFFER.md](PSRAM_OFFLINE_BUFFER.md)** - PSRAM offline buffering documentation
 - **[ESP_IDF_BUILD.md](ESP_IDF_BUILD.md)** - Detailed ESP-IDF build instructions
 - **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Migration from old InputManager system
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture details
@@ -496,12 +503,20 @@ The device uses ESP32 Preferences (NVS) to store:
 - Reduce number of configured pins
 - Ensure stable network connection
 - Check MQTT broker performance
+- Check PSRAM buffer status (may be full)
 
 ### No data on raw/ topics
 - Verify pin is configured (check status message)
 - Ensure pin has signal activity
 - Check MQTT connection
 - Subscribe to correct topic: `raw/{pinId}`
+- If offline, data may be in PSRAM buffer awaiting replay
+
+### PSRAM buffer issues
+- Check device has PSRAM installed (4MB recommended)
+- Verify PSRAM configuration in sdkconfig
+- Monitor `psram_buffer_count` and `psram_buffer_dropped` in status
+- See [PSRAM_OFFLINE_BUFFER.md](PSRAM_OFFLINE_BUFFER.md) for details
 
 ## Performance Notes
 

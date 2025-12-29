@@ -23,20 +23,30 @@ The firmware captures all signal changes with maximum accuracy and minimal proce
 ```
 GPIO ISR / RMT (Hardware)
    ↓
-Lock-free Ring Buffer (ISR-safe)
+Lock-free Ring Buffer (ISR-safe, SRAM)
    ↓
 Signal Collect Task (Priority: 10 - HIGH)
    ↓
 Batch Queue
    ↓
 MQTT Publish Task (Priority: 3 - LOW)
+   ↓
+   ├─→ Direct Publish (MQTT connected & fast)
+   └─→ PSRAM Buffer (MQTT slow/down)
+         ↓
+    Replay Task (Priority: 2 - LOWER)
+         ↓
+    MQTT Publish (when reconnected)
 ```
 
 ### Key Design Decisions
 
 - **ISR does NOT malloc** - Events are copied to pre-allocated ring buffer
 - **ISR does NOT publish MQTT** - MQTT runs in separate low-priority task
+- **ISR does NOT write PSRAM** - PSRAM only used by publish/replay tasks
 - **Queue has hard limits** - Oldest raw edges dropped when full (pulse data preserved when possible)
+- **PSRAM Offline Buffer** - 4MB PSRAM buffer stores packets when MQTT unavailable
+- **Automatic Replay** - Buffered packets replayed in sequence order when connection restored
 - **No debouncing** - All edges captured exactly as they occur
 - **No semantic filtering** - Firmware doesn't interpret signal meaning
 
