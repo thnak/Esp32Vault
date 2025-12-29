@@ -60,15 +60,15 @@ This pull request completes the migration from MQTT 3.1.1 to MQTT 5.0, implement
 |----------|----------------|---------------|
 | **Payload Format Indicator** | 0 (binary) | 1 (UTF-8) |
 | **Content-Type** | Vendor-specific | `application/json` |
-| **Message Expiry** | 60s (raw/pulse) | None |
+| **Message Expiry** | 60s (esp32vault/raw/pulse) | None |
 
 ### Content Types by Topic:
 
 ```
-raw/{pin}       → application/vnd.esp32vault.signal.raw+bin
-pulse/{pin}     → application/vnd.esp32vault.signal.pulse+bin
-diag            → application/vnd.esp32vault.signal.diag+bin
-heartbeat       → application/json
+esp32vault/raw/{pin}    → application/vnd.esp32vault.signal.raw+bin
+esp32vault/pulse/{pin}  → application/vnd.esp32vault.signal.pulse+bin
+esp32vault/diag         → application/vnd.esp32vault.signal.diag+bin
+heartbeat               → application/json
 status          → application/json
 ```
 
@@ -144,7 +144,7 @@ Requires MQTT 5.0 compatible broker:
 ### 1. Subscribe with MQTT5 Properties
 ```bash
 mosquitto_sub -h broker.example.com \
-    -t "raw/#" \
+    -t "esp32vault/raw/#" \
     -F "%t: Content-Type=%p{content-type}, Format=%p{payload-format-indicator}" \
     -v
 ```

@@ -91,10 +91,10 @@ esp32vault/{device_id}/io/{pin}/state       - Pin state (published)
 ### New Topics (Signal Telemetry)
 
 ```
-raw/{pinId}                                      - Raw edge batches (binary)
-pulse/{pinId}                                    - Pulse width (binary)
-diag                                             - Diagnostics (binary)
-heartbeat                                        - Heartbeat (JSON)
+esp32vault/raw/{pinId}                             - Raw edge batches (binary)
+esp32vault/pulse/{pinId}                           - Pulse width (binary)
+esp32vault/diag                                    - Diagnostics (binary)
+heartbeat                                          - Heartbeat (JSON)
 esp32vault/{mac}/cmd/signal/config              - Configure pin
 esp32vault/{mac}/cmd/signal/remove              - Remove pin
 ```
@@ -133,7 +133,7 @@ Payload: {
 - No `mode` - use `capture_raw` and `capture_pulse` flags
 - No `edge` - always captures all changes
 - No `debounce` - removed
-- No `report_topic` - topics are auto-generated as `raw/{pin}` and `pulse/{pin}`
+- No `report_topic` - topics are auto-generated as `esp32vault/raw/{pin}` and `esp32vault/pulse/{pin}`
 - No `persist` - not implemented yet (future feature)
 
 ### Old: Remove Pin
@@ -182,8 +182,8 @@ def on_message(client, userdata, msg):
 import struct
 
 def on_message(client, userdata, msg):
-    if msg.topic.startswith('raw/'):
-        pin_id = int(msg.topic.split('/')[1])
+    if msg.topic.startswith('esp32vault/raw/'):
+        pin_id = int(msg.topic.split('/')[2])
         
         # Unpack header
         version, packet_type = struct.unpack('BB', msg.payload[0:2])
@@ -218,8 +218,8 @@ client.on('message', (topic, payload) => {
 const struct = require('python-struct');
 
 client.on('message', (topic, payload) => {
-  if (topic.startsWith('raw/')) {
-    const pinId = parseInt(topic.split('/')[1]);
+  if (topic.startsWith('esp32vault/raw/')) {
+    const pinId = parseInt(topic.split('/')[2]);
     
     // Parse header
     const [version, type] = struct.unpack('BB', payload.slice(0, 2));
@@ -292,9 +292,9 @@ mosquitto_pub -h broker.example.com \
 
 ### 4. Monitor and Validate
 
-1. Subscribe to `diag` topic to monitor drops
+1. Subscribe to `esp32vault/diag` topic to monitor drops
 2. Subscribe to `heartbeat` to confirm device is alive
-3. Subscribe to `raw/{pin}` for signal data
+3. Subscribe to `esp32vault/raw/{pin}` for signal data
 4. Check `dropped_raw` and `dropped_pulse` counters
 
 ## Backward Compatibility
@@ -373,7 +373,7 @@ import struct
 import json
 
 def on_message(client, userdata, msg):
-    if msg.topic.startswith('raw/'):
+    if msg.topic.startswith('esp32vault/raw/'):
         # Parse binary
         # ... (parsing code) ...
         

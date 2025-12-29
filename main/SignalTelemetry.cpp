@@ -141,8 +141,8 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
     config.captureRaw = captureRaw;
     config.capturePulse = capturePulse;
     config.useRMT = useRMT;
-    config.rawTopic = "raw/" + std::to_string(pin);
-    config.pulseTopic = "pulse/" + std::to_string(pin);
+    config.rawTopic = "esp32vault/raw/" + std::to_string(pin);
+    config.pulseTopic = "esp32vault/pulse/" + std::to_string(pin);
     
     // Configure hardware using ESP-IDF GPIO API
     gpio_config_t io_conf = {};
@@ -372,7 +372,7 @@ void SignalTelemetry::publishRawBatch(const RawPacket* batch) {
     }
     
     uint8_t pinId = batch->edges[0].pinId;
-    std::string topic = "raw/" + std::to_string(pinId);
+    std::string topic = "esp32vault/raw/" + std::to_string(pinId);
     
     // Calculate payload size
     size_t headerSize = sizeof(PacketHeader) + sizeof(uint64_t) + sizeof(uint32_t) + sizeof(uint8_t);
@@ -390,7 +390,7 @@ void SignalTelemetry::publishPulse(const PulsePacket* pulse) {
         return;
     }
     
-    std::string topic = "pulse/" + std::to_string(pulse->pinId);
+    std::string topic = "esp32vault/pulse/" + std::to_string(pulse->pinId);
     
     // Publish binary pulse packet with MQTT5 properties
     // Set message expiry for time-sensitive telemetry
@@ -412,7 +412,7 @@ void SignalTelemetry::publishDiagnostics() {
     diag.rmtOverflow = rmtOverflow;
     
     // Publish binary diagnostic packet with MQTT5 properties
-    mqttManager->publishBinary("diag", (const uint8_t*)&diag, sizeof(DiagPacket), 
+    mqttManager->publishBinary("esp32vault/diag", (const uint8_t*)&diag, sizeof(DiagPacket), 
                               CONTENT_TYPE_DIAG_SIGNAL, false, 0);
     
     ESP_LOGI(TAG, "Diagnostics published:");

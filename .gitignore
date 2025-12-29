@@ -4,6 +4,10 @@ sdkconfig
 sdkconfig.old
 dependencies.lock
 
+# CodeQL build artifacts
+_codeql_build_dir/
+_codeql_detected_source_root
+
 # Build artifacts
 *.bin
 *.elf

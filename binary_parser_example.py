@@ -136,9 +136,9 @@ class SignalTelemetryClient:
         print(f"Connected to MQTT broker with result code {rc}")
         
         # Subscribe to all signal topics
-        client.subscribe("raw/#")
-        client.subscribe("pulse/#")
-        client.subscribe("diag")
+        client.subscribe("esp32vault/raw/#")
+        client.subscribe("esp32vault/pulse/#")
+        client.subscribe("esp32vault/diag")
         client.subscribe("heartbeat")
         client.subscribe(f"esp32vault/{self.mac}/status")
         
@@ -153,11 +153,11 @@ class SignalTelemetryClient:
         print(f"Payload length: {len(payload)} bytes")
         
         try:
-            if topic.startswith('raw/'):
+            if topic.startswith('esp32vault/raw/'):
                 self.handle_raw_message(topic, payload)
-            elif topic.startswith('pulse/'):
+            elif topic.startswith('esp32vault/pulse/'):
                 self.handle_pulse_message(topic, payload)
-            elif topic == 'diag':
+            elif topic == 'esp32vault/diag':
                 self.handle_diag_message(payload)
             elif topic == 'heartbeat':
                 self.handle_heartbeat_message(payload)

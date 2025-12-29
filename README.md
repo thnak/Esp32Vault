@@ -44,9 +44,9 @@ ESP32 Vault captures all signal changes with maximum accuracy and minimal proces
 - **Dynamic Configuration**: MQTT settings can be configured via MQTT messages
 - **MAC-based Client ID**: Uses device MAC address as MQTT client ID
 - **Topic Structure**: 
-  - `raw/{pin}` - Raw edge batches (binary, `application/vnd.esp32vault.signal.raw+bin`)
-  - `pulse/{pin}` - Pulse width measurements (binary, `application/vnd.esp32vault.signal.pulse+bin`)
-  - `diag` - Diagnostic data (binary, `application/vnd.esp32vault.signal.diag+bin`)
+  - `esp32vault/raw/{pin}` - Raw edge batches (binary, `application/vnd.esp32vault.signal.raw+bin`)
+  - `esp32vault/pulse/{pin}` - Pulse width measurements (binary, `application/vnd.esp32vault.signal.pulse+bin`)
+  - `esp32vault/diag` - Diagnostic data (binary, `application/vnd.esp32vault.signal.diag+bin`)
   - `heartbeat` - Device heartbeat (JSON, `application/json`)
   - `esp32vault/{mac}/status` - Device status and telemetry (JSON, `application/json`)
   - `esp32vault/{mac}/cmd/#` - Command topics
@@ -92,14 +92,14 @@ mosquitto_pub -h broker.example.com \
 
 ```bash
 mosquitto_sub -h broker.example.com \
-  -t "raw/14" -F "%t: %x" -v
+  -t "esp32vault/raw/14" -F "%t: %x" -v
 ```
 
 3. Monitor diagnostics:
 
 ```bash
 mosquitto_sub -h broker.example.com \
-  -t "diag" -F "%t: %x" -v
+  -t "esp32vault/diag" -F "%t: %x" -v
 ```
 
 For complete documentation, see:
@@ -343,9 +343,9 @@ Payload: any
 ### Signal Data (Binary)
 
 ```
-raw/{pin}        - Raw edge change batches (binary packed format)
-pulse/{pin}      - Pulse width measurements (binary packed format)
-diag             - Diagnostic counters (binary packed format)
+esp32vault/raw/{pin}     - Raw edge change batches (binary packed format)
+esp32vault/pulse/{pin}   - Pulse width measurements (binary packed format)
+esp32vault/diag          - Diagnostic counters (binary packed format)
 ```
 
 ### Status Data (JSON)
@@ -533,11 +533,11 @@ The device uses ESP32 Preferences (NVS) to store:
 - Check MQTT broker performance
 - Check PSRAM buffer status (may be full)
 
-### No data on raw/ topics
+### No data on esp32vault/raw/ topics
 - Verify pin is configured (check status message)
 - Ensure pin has signal activity
 - Check MQTT connection
-- Subscribe to correct topic: `raw/{pinId}`
+- Subscribe to correct topic: `esp32vault/raw/{pinId}`
 - If offline, data may be in PSRAM buffer awaiting replay
 
 ### PSRAM buffer issues

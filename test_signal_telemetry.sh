@@ -90,13 +90,13 @@ while true; do
             publish "esp32vault/${DEVICE_MAC}/cmd/signal/remove" "{\"pin\": ${pin}}"
             ;;
         4)
-            subscribe "raw/14" "%t: %x"
+            subscribe "esp32vault/raw/14" "%t: %x"
             ;;
         5)
-            subscribe "pulse/27" "%t: %x"
+            subscribe "esp32vault/pulse/27" "%t: %x"
             ;;
         6)
-            subscribe "diag" "%t: %x"
+            subscribe "esp32vault/diag" "%t: %x"
             ;;
         7)
             subscribe "heartbeat"
@@ -106,7 +106,7 @@ while true; do
             ;;
         9)
             echo -e "${YELLOW}Subscribing to ALL topics${NC}"
-            mosquitto_sub -h "$MQTT_BROKER" -t "raw/#" -t "pulse/#" -t "diag" -t "heartbeat" -t "esp32vault/${DEVICE_MAC}/status" -v
+            mosquitto_sub -h "$MQTT_BROKER" -t "esp32vault/raw/#" -t "esp32vault/pulse/#" -t "esp32vault/diag" -t "heartbeat" -t "esp32vault/${DEVICE_MAC}/status" -v
             ;;
         10)
             if command -v python3 &> /dev/null; then

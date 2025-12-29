@@ -123,13 +123,13 @@ mosquitto_pub -h your-broker.com \
 
 ```bash
 # Subscribe to raw edge data (binary format)
-mosquitto_sub -h your-broker.com -t "raw/14" -F "%t: %x" -v
+mosquitto_sub -h your-broker.com -t "esp32vault/raw/14" -F "%t: %x" -v
 
 # Subscribe to pulse width data (binary format)
-mosquitto_sub -h your-broker.com -t "pulse/27" -F "%t: %x" -v
+mosquitto_sub -h your-broker.com -t "esp32vault/pulse/27" -F "%t: %x" -v
 
 # Monitor diagnostics
-mosquitto_sub -h your-broker.com -t "diag" -F "%t: %x" -v
+mosquitto_sub -h your-broker.com -t "esp32vault/diag" -F "%t: %x" -v
 
 # Monitor heartbeat (JSON format)
 mosquitto_sub -h your-broker.com -t "heartbeat" -v
@@ -317,7 +317,7 @@ mosquitto_pub -h your-broker.com \
   -m '{"pin":14,"capture_raw":true,"capture_pulse":false}'
 
 # Subscribe to raw data
-mosquitto_sub -h your-broker.com -t "raw/14" -F "%t: %x" -v
+mosquitto_sub -h your-broker.com -t "esp32vault/raw/14" -F "%t: %x" -v
 ```
 
 Connect a signal source to pin 14 (e.g., button, sensor) and observe edge changes.

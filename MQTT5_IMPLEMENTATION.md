@@ -68,7 +68,7 @@ mqtt_cfg.session.keepalive = 60;
 
 ```cpp
 mqttManager->publishBinary(
-    "raw/14",                           // Topic
+    "esp32vault/raw/14",                           // Topic
     (const uint8_t*)data,               // Payload
     dataSize,                           // Length
     CONTENT_TYPE_RAW_SIGNAL,           // Content-Type
@@ -95,9 +95,9 @@ The JSON publish method automatically sets:
 
 | Message Type | Topic | Content-Type | Format | Expiry |
 |-------------|-------|--------------|--------|--------|
-| Raw Edges | `raw/{pinId}` | `application/vnd.esp32vault.signal.raw+bin` | Binary | 60s |
-| Pulse Width | `pulse/{pinId}` | `application/vnd.esp32vault.signal.pulse+bin` | Binary | 60s |
-| Diagnostics | `diag` | `application/vnd.esp32vault.signal.diag+bin` | Binary | None |
+| Raw Edges | `esp32vault/raw/{pinId}` | `application/vnd.esp32vault.signal.raw+bin` | Binary | 60s |
+| Pulse Width | `esp32vault/pulse/{pinId}` | `application/vnd.esp32vault.signal.pulse+bin` | Binary | 60s |
+| Diagnostics | `esp32vault/diag` | `application/vnd.esp32vault.signal.diag+bin` | Binary | None |
 | Heartbeat | `heartbeat` | `application/json` | UTF-8 | None |
 | Status | `esp32vault/{mac}/status` | `application/json` | UTF-8 | None |
 
@@ -124,7 +124,7 @@ def on_message(client, userdata, msg):
 
 Stale telemetry data automatically expires:
 
-- If a subscriber connects after 60+ seconds, they won't receive old raw/pulse data
+- If a subscriber connects after 60+ seconds, they won't receive old esp32vault/raw/pulse data
 - Reduces storage requirements on the broker
 - Ensures clients only see recent signal data
 
@@ -212,7 +212,7 @@ To test MQTT5 features:
 ```bash
 # Subscribe with Mosquitto 2.0+
 mosquitto_sub -h broker.example.com \
-    -t "raw/#" \
+    -t "esp32vault/raw/#" \
     -F "%t: Content-Type=%p{content-type}, Format=%p{payload-format-indicator}" \
     -v
 

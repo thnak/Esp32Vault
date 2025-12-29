@@ -62,10 +62,10 @@ MQTT Publish Task (Priority: 3 - LOW)
 ### Topic Structure
 
 ```
-raw/{pinId}        - Raw edge change batches (binary)
-pulse/{pinId}      - Pulse width measurements (binary)
-diag               - Diagnostic information (binary)
-heartbeat          - Device heartbeat (JSON)
+esp32vault/raw/{pinId}    - Raw edge change batches (binary)
+esp32vault/pulse/{pinId}  - Pulse width measurements (binary)
+esp32vault/diag           - Diagnostic information (binary)
+heartbeat                 - Device heartbeat (JSON)
 ```
 
 ### MQTT 5 Properties
@@ -301,7 +301,7 @@ Published every 30 seconds to `heartbeat` topic:
 
 ### Diagnostic Messages
 
-Published every 60 seconds to `diag` topic (binary):
+Published every 60 seconds to `esp32vault/diag` topic (binary):
 
 - Dropped raw edges count
 - Dropped pulse measurements count
@@ -358,7 +358,7 @@ mosquitto_pub -h broker.example.com \
 
 ```bash
 mosquitto_sub -h broker.example.com \
-  -t "raw/14" \
+  -t "esp32vault/raw/14" \
   -F "%t: %x" -v
 ```
 
@@ -366,7 +366,7 @@ mosquitto_sub -h broker.example.com \
 
 ```bash
 mosquitto_sub -h broker.example.com \
-  -t "pulse/27" \
+  -t "esp32vault/pulse/27" \
   -F "%t: %x" -v
 ```
 
@@ -374,7 +374,7 @@ mosquitto_sub -h broker.example.com \
 
 ```bash
 mosquitto_sub -h broker.example.com \
-  -t "diag" \
+  -t "esp32vault/diag" \
   -F "%t: %x" -v
 ```
 
@@ -437,13 +437,13 @@ The old `InputManager` has been replaced with `SignalTelemetry`. Key differences
 
 **Solution**: Use ISR fallback (set `use_rmt: false`)
 
-### No data on raw/ topics
+### No data on esp32vault/raw/ topics
 
 **Check**:
 1. Pin is configured: Check status message
 2. Pin has activity: Test with oscilloscope or LED
 3. MQTT connected: Check device status
-4. Subscribed to correct topic: `raw/{pinId}`
+4. Subscribed to correct topic: `esp32vault/raw/{pinId}`
 
 ## Compliance with Specification
 
@@ -455,7 +455,7 @@ This implementation follows the "ESP32 Firmware Checksheet – Signal Telemetry 
 - ✅ Raw level change capture (no filtering)
 - ✅ Pulse width measurement (RMT preferred)
 - ✅ Batching with flood control
-- ✅ Topic convention (raw/, pulse/, diag, heartbeat)
+- ✅ Topic convention (esp32vault/raw/, esp32vault/pulse/, esp32vault/diag, heartbeat)
 - ✅ Diagnostic reporting
 - ✅ Boot/reboot behavior (seq reset, heartbeat, diag)
 - ✅ No debounce, no threshold, no semantic logic

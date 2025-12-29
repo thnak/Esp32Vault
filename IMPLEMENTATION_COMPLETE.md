@@ -153,9 +153,9 @@ Total size: 14 bytes
 
 | Topic | Format | QoS | Retained | Description |
 |-------|--------|-----|----------|-------------|
-| `raw/{pinId}` | Binary | 0 | No | Raw edge batches |
-| `pulse/{pinId}` | Binary | 0 | No | Pulse width data |
-| `diag` | Binary | 0 | No | Diagnostics |
+| `esp32vault/raw/{pinId}` | Binary | 0 | No | Raw edge batches |
+| `esp32vault/pulse/{pinId}` | Binary | 0 | No | Pulse width data |
+| `esp32vault/diag` | Binary | 0 | No | Diagnostics |
 | `heartbeat` | JSON | 0 | No | Device alive |
 | `esp32vault/{mac}/status` | JSON | 0 | Yes | Device status |
 
@@ -290,10 +290,10 @@ mosquitto_pub -h broker -t "esp32vault/MAC/cmd/signal/config" \
   -m '{"pin":14,"capture_raw":true}'
 
 # Monitor raw edges (binary)
-mosquitto_sub -h broker -t "raw/14" -F "%t: %x" -v
+mosquitto_sub -h broker -t "esp32vault/raw/14" -F "%t: %x" -v
 
 # Monitor diagnostics
-mosquitto_sub -h broker -t "diag" -F "%t: %x" -v
+mosquitto_sub -h broker -t "esp32vault/diag" -F "%t: %x" -v
 
 # Monitor heartbeat (JSON)
 mosquitto_sub -h broker -t "heartbeat" -v
@@ -319,7 +319,7 @@ This implementation fully complies with the **ESP32 Firmware Checksheet – Sign
 ✅ Raw level change capture (no filtering)
 ✅ Pulse width measurement (RMT + ISR)
 ✅ Batching (max 50 events, 50ms window)
-✅ Topic convention (raw/, pulse/, diag, heartbeat)
+✅ Topic convention (esp32vault/raw/, esp32vault/pulse/, esp32vault/diag, heartbeat)
 ✅ Diagnostic reporting
 ✅ Boot/reboot behavior (seq reset, heartbeat, diag)
 ✅ No debounce, no threshold, no semantic logic
