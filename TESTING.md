@@ -1,51 +1,54 @@
 # Testing Guide for ESP32 Vault
 
-This document provides comprehensive testing procedures for ESP32 Vault.
+This document provides comprehensive testing procedures for ESP32 Vault Signal Telemetry v1.
 
 ## Prerequisites
 
 - ESP32 development board connected to computer
-- PlatformIO installed
+- ESP-IDF v5.x installed and configured
 - MQTT broker accessible (e.g., Mosquitto)
 - WiFi network (2.4 GHz)
 - MQTT client tools (mosquitto_pub, mosquitto_sub, or MQTT Explorer)
+- Python 3.x (for binary parser testing)
 
-## 1. Build and Upload Test
+## 1. Build and Flash Test
 
 ### Test: Successful Build
 
 ```bash
 cd Esp32Vault
-pio run
+idf.py build
 ```
 
 **Expected Result**: 
 - Build completes without errors
-- Output shows: `SUCCESS`
-- Firmware size displayed (should be < 1.5MB)
+- Output shows: `Project build complete`
+- Firmware binary at `build/esp32vault.bin`
+- Firmware size displayed (should be ~1.5MB)
 
-### Test: Upload Firmware
+### Test: Flash Firmware
 
 ```bash
-pio run --target upload
+idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
 **Expected Result**:
-- Upload completes successfully
+- Flash completes successfully
 - Device resets automatically
-- Serial monitor shows startup messages
+- Serial monitor shows startup messages with Signal Telemetry v1
 
 ## 2. WiFi Manager Tests
 
 ### Test 2.1: First Boot (No Credentials)
 
 **Steps**:
-1. Upload firmware to fresh ESP32 (or after clearing NVS)
+1. Flash firmware to fresh ESP32 (or after erasing NVS: `idf.py erase-flash`)
 2. Monitor serial output
 
 **Expected Result**:
 ```
-ESP32 Vault Starting...
+ESP32 Vault - Signal Telemetry v1
+=================================
 Initializing WiFi...
 No saved credentials. Attempting to connect to default hotspot...
 ...
@@ -379,14 +382,16 @@ mosquitto_pub -h localhost \
 ### Test 6.1: Full System Startup
 
 **Steps**:
-1. Upload firmware to fresh ESP32
-2. Configure WiFi via web interface
-3. Configure MQTT via MQTT command
-4. Trigger OTA update via MQTT command (optional)
+1. Flash firmware to ESP32
+2. Configure WiFi credentials
+3. Configure MQTT broker
+4. Configure signal pins
+5. Trigger OTA update (optional)
 
 **Expected Result**:
 - All features operational
-- Status messages publishing
+- Signal telemetry publishing binary data
+- Diagnostics reporting
 - Commands responding
 - OTA updates available on demand
 
@@ -491,11 +496,11 @@ mosquitto_pub -h localhost \
 
 **Steps**:
 1. Configure WiFi
-2. Upload new firmware via USB (not OTA)
+2. Flash new firmware via USB (not OTA)
 3. Check if WiFi still works
 
 **Expected Result**:
-- WiFi credentials persist
+- WiFi credentials persist in NVS
 - Device connects automatically
 - Credentials encrypted in NVS
 
@@ -507,15 +512,15 @@ mosquitto_pub -h localhost \
 
 **Expected Result**:
 - Connection fails without credentials
-- Connection succeeds with credentials
+- Connection succeeds with correct credentials
 
 ## Test Checklist
 
 Use this checklist to verify all tests:
 
-### Build & Upload
-- [ ] Build succeeds
-- [ ] Upload via USB succeeds
+### Build & Flash
+- [ ] Build succeeds with ESP-IDF
+- [ ] Flash via USB succeeds
 - [ ] Serial monitor shows output
 
 ### WiFi Manager
@@ -574,5 +579,5 @@ When reporting issues, include:
 2. Expected vs actual result
 3. Serial monitor output
 4. ESP32 board type
-5. PlatformIO version
+5. ESP-IDF version (run `idf.py --version`)
 6. Network configuration
