@@ -1,9 +1,13 @@
 #include "MQTTManager.h"
+#include <esp_system.h>
 
 MQTTManager::MQTTManager() : mqttPort(1883), lastReconnectAttempt(0) {
     mqttClient = new PubSubClient(wifiClient);
-    clientId = "ESP32-Vault-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+    // Use MAC address as client ID per spec
+    clientId = getMacAddress();
     baseTopic = "esp32vault/" + clientId;
+    // Increase buffer size for binary packets
+    mqttClient->setBufferSize(2048);
 }
 
 MQTTManager::~MQTTManager() {
@@ -91,6 +95,21 @@ void MQTTManager::publish(const String& topic, const String& payload, bool retai
         mqttClient->publish(topic.c_str(), payload.c_str(), retained);
     }
 }
+
+void MQTTManager::publish(const String& topic, const uint8_t* payload, size_t length, bool retained) {
+    if (mqttClient->connected()) {
+        mqttClient->publish(topic.c_str(), payload, length, retained);
+    }
+}
+
+String MQTTManager::getMacAddress() const {
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    char macStr[18];
+    sprintf(macStr, "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    return String(macStr);
+}
+
 
 void MQTTManager::subscribe(const String& topic) {
     if (mqttClient->connected()) {

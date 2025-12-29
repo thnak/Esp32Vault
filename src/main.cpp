@@ -2,27 +2,25 @@
 #include "WiFiManager.h"
 #include "MQTTManager.h"
 #include "OTAManager.h"
-#include "InputManager.h"
+#include "SignalTelemetry.h"
 #include <ArduinoJson.h>
 
 // Manager instances
 WiFiManager wifiManager;
 MQTTManager mqttManager;
 OTAManager otaManager;
-InputManager inputManager;
+SignalTelemetry signalTelemetry;
 
 // Status variables
 unsigned long lastStatusUpdate = 0;
 const unsigned long STATUS_INTERVAL = 30000; // 30 seconds
 
-// Signal strength variables
-unsigned long lastSignalUpdate = 0;
-const unsigned long SIGNAL_INTERVAL = 10000; // 10 seconds
+// Heartbeat interval
+unsigned long lastHeartbeat = 0;
+const unsigned long HEARTBEAT_INTERVAL = 30000; // 30 seconds
 
 void handleMQTTMessage(String topic, String payload);
 void publishDeviceInfo();
-void publishSignalStrength();
-void handleConfigCommand(const String& payload);
 void publishOTAStatus(const String& status);
 
 void setup() {
@@ -30,7 +28,7 @@ void setup() {
     delay(1000);
     
     Serial.println("\n\n=================================");
-    Serial.println("ESP32 Vault Starting...");
+    Serial.println("ESP32 Vault - Signal Telemetry v1");
     Serial.println("=================================\n");
     
     // Initialize WiFi Manager
@@ -45,17 +43,20 @@ void setup() {
         
         // Initialize OTA with callback for status publishing
         Serial.println("Initializing OTA...");
-        
-        // Initialize Input Manager
-        Serial.println("Initializing Input Manager...");
-        inputManager.begin(&mqttManager);
-        String deviceId = "ESP32-Vault-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+        String deviceId = mqttManager.getMacAddress();
         otaManager.begin(deviceId);
         otaManager.setStatusCallback(publishOTAStatus);
+        
+        // Initialize Signal Telemetry
+        Serial.println("Initializing Signal Telemetry...");
+        signalTelemetry.begin(&mqttManager, mqttManager.getMacAddress());
+        signalTelemetry.onBoot();
     }
     
     Serial.println("\n=================================");
     Serial.println("Setup Complete!");
+    Serial.println("Firmware: Signal Telemetry v1");
+    Serial.println("Philosophy: Firmware = Oscilloscope, Server = Judge");
     Serial.println("=================================\n");
 }
 
@@ -67,7 +68,7 @@ void loop() {
     if (wifiManager.isConnected()) {
         mqttManager.loop();
         otaManager.loop();
-        inputManager.loop();
+        signalTelemetry.loop();
         
         // Periodic status update
         unsigned long now = millis();
@@ -76,10 +77,10 @@ void loop() {
             publishDeviceInfo();
         }
         
-        // Periodic signal strength update
-        if (now - lastSignalUpdate > SIGNAL_INTERVAL) {
-            lastSignalUpdate = now;
-            publishSignalStrength();
+        // Periodic heartbeat
+        if (now - lastHeartbeat > HEARTBEAT_INTERVAL) {
+            lastHeartbeat = now;
+            signalTelemetry.publishHeartbeat();
         }
         
         // Additional delay for normal operation (total ~10ms with WiFiManager delay)
@@ -96,12 +97,8 @@ void handleMQTTMessage(String topic, String payload) {
     Serial.print(" = ");
     Serial.println(payload);
     
-    // Handle configuration updates
-    if (topic.endsWith("/config/set")) {
-        handleConfigCommand(payload);
-    }
     // Handle MQTT broker configuration
-    else if (topic.endsWith("/cmd/mqtt")) {
+    if (topic.endsWith("/cmd/mqtt")) {
         StaticJsonDocument<256> doc;
         DeserializationError error = deserializeJson(doc, payload);
         
@@ -156,79 +153,41 @@ void handleMQTTMessage(String topic, String payload) {
         delay(1000);
         ESP.restart();
     }
-    // Handle IO configuration
-    else if (topic.endsWith("/cmd/io/config")) {
+    // Handle signal pin configuration
+    else if (topic.endsWith("/cmd/signal/config")) {
         StaticJsonDocument<512> doc;
         DeserializationError error = deserializeJson(doc, payload);
         
         if (!error) {
-            if (inputManager.configurePin(doc)) {
-                mqttManager.publishStatus("io_config_updated");
-                Serial.println("IO configuration updated via MQTT");
+            uint8_t pin = doc["pin"] | 0;
+            bool captureRaw = doc["capture_raw"] | true;
+            bool capturePulse = doc["capture_pulse"] | false;
+            bool useRMT = doc["use_rmt"] | false;
+            
+            if (signalTelemetry.configurePin(pin, captureRaw, capturePulse, useRMT)) {
+                mqttManager.publishStatus("signal_pin_configured");
+                Serial.println("Signal pin " + String(pin) + " configured");
             } else {
-                mqttManager.publishStatus("io_config_failed");
-                Serial.println("IO configuration failed");
+                mqttManager.publishStatus("signal_pin_config_failed");
+                Serial.println("Signal pin configuration failed");
             }
         }
     }
-    // Handle IO exclude list
-    else if (topic.endsWith("/cmd/io/exclude")) {
-        StaticJsonDocument<512> doc;
-        DeserializationError error = deserializeJson(doc, payload);
-        
-        if (!error) {
-            std::vector<uint8_t> pins;
-            std::vector<std::pair<uint8_t, uint8_t>> ranges;
-            bool persist = doc["persist"] | false;
-            
-            JsonArray pinsArray = doc["pins"];
-            for (JsonVariant pin : pinsArray) {
-                pins.push_back(pin.as<uint8_t>());
-            }
-            
-            JsonArray rangesArray = doc["ranges"];
-            for (JsonVariant rangeVariant : rangesArray) {
-                JsonObject rangeObj = rangeVariant.as<JsonObject>();
-                uint8_t from = rangeObj["from"];
-                uint8_t to = rangeObj["to"];
-                ranges.push_back(std::make_pair(from, to));
-            }
-            
-            if (inputManager.setExcludeList(pins, ranges, persist)) {
-                mqttManager.publishStatus("io_exclude_updated");
-                Serial.println("IO exclude list updated via MQTT");
-            }
-        }
-    }
-    // Handle IO trigger - match pattern /cmd/io/{pin}/trigger
-    else if (topic.indexOf("/cmd/io/") >= 0 && topic.endsWith("/trigger")) {
-        // Extract pin number from topic
-        int startIdx = topic.indexOf("/cmd/io/") + 8;
-        int endIdx = topic.indexOf("/trigger");
-        String pinStr = topic.substring(startIdx, endIdx);
-        uint8_t pin = pinStr.toInt();
-        
-        // Parse payload for action
+    // Handle signal pin removal
+    else if (topic.endsWith("/cmd/signal/remove")) {
         StaticJsonDocument<128> doc;
         DeserializationError error = deserializeJson(doc, payload);
         
-        String action;
-        uint16_t pulseWidth = 100;
-        
-        if (!error && doc.is<JsonObject>()) {
-            action = doc["action"] | "set";
-            pulseWidth = doc["pulse"] | 100;
-        } else {
-            // Payload is plain text action
-            action = payload;
-        }
-        
-        if (inputManager.triggerPin(pin, action, pulseWidth)) {
-            mqttManager.publishStatus("io_trigger_success");
-            Serial.println("IO trigger executed on pin " + String(pin));
-        } else {
-            mqttManager.publishStatus("io_trigger_failed");
-            Serial.println("IO trigger failed on pin " + String(pin));
+        if (!error) {
+            uint8_t pin = doc["pin"] | 0;
+            
+            if (signalTelemetry.removePin(pin)) {
+                mqttManager.publishStatus("signal_pin_removed");
+                Serial.println("Signal pin " + String(pin) + " removed");
+            } else {
+                mqttManager.publishStatus("signal_pin_remove_failed");
+                Serial.println("Signal pin removal failed");
+            }
         }
     }
 }
@@ -241,7 +200,7 @@ void publishDeviceInfo() {
     StaticJsonDocument<512> doc;
     
     // Device information
-    doc["device_id"] = String((uint32_t)ESP.getEfuseMac(), HEX);
+    doc["device_id"] = mqttManager.getMacAddress();
     doc["uptime"] = millis() / 1000;
     doc["free_heap"] = ESP.getFreeHeap();
     doc["wifi_rssi"] = WiFi.RSSI();
@@ -249,6 +208,13 @@ void publishDeviceInfo() {
     doc["ip_address"] = WiFi.localIP().toString();
     doc["mqtt_connected"] = mqttManager.isConnected();
     doc["ota_update_in_progress"] = otaManager.isUpdateInProgress();
+    doc["firmware_version"] = "Signal Telemetry v1";
+    
+    // Add diagnostics
+    DiagPacket diag = signalTelemetry.getDiagnostics();
+    doc["dropped_raw"] = diag.droppedRaw;
+    doc["dropped_pulse"] = diag.droppedPulse;
+    doc["queue_depth"] = diag.queueDepth;
     
     String output;
     serializeJson(doc, output);
@@ -256,35 +222,9 @@ void publishDeviceInfo() {
     mqttManager.publishStatus(output);
 }
 
-void publishSignalStrength() {
-    if (!mqttManager.isConnected()) {
-        return;
-    }
-    
-    int rssi = WiFi.RSSI();
-    mqttManager.publishSignalStrength(rssi);
-}
-
-void handleConfigCommand(const String& payload) {
-    StaticJsonDocument<256> doc;
-    DeserializationError error = deserializeJson(doc, payload);
-    
-    if (!error) {
-        // Handle different configuration parameters
-        if (doc.containsKey("status_interval")) {
-            // Could be used to adjust status update interval
-            Serial.println("Configuration updated");
-        }
-        
-        mqttManager.publishStatus("config_updated");
-    } else {
-        Serial.println("Failed to parse config JSON");
-    }
-}
-
 void publishOTAStatus(const String& status) {
     if (mqttManager.isConnected()) {
-        String deviceId = "ESP32-Vault-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+        String deviceId = mqttManager.getMacAddress();
         String topic = "esp32vault/" + deviceId + "/ota/status";
         mqttManager.publish(topic, status);
     }

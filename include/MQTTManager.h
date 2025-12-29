@@ -43,11 +43,15 @@ public:
     void saveConfig(const String& server, int port, const String& user, const String& password);
     
     void publish(const String& topic, const String& payload, bool retained = false);
+    void publish(const String& topic, const uint8_t* payload, size_t length, bool retained = false);
     void subscribe(const String& topic);
     
     void publishStatus(const String& status);
     void publishConfig(const String& config);
     void publishSignalStrength(int rssi);
+    
+    String getClientId() const { return clientId; }
+    String getMacAddress() const;
 };
 
 #endif // MQTT_MANAGER_H
