@@ -167,7 +167,16 @@ ESP32 Vault includes support for unit tests and demo applications that run on Li
 ./build_and_run_demo_linux.sh
 ```
 
-See [test/host_test_linux/README.md](test/host_test_linux/README.md) and [demo/linux_demo/README.md](demo/linux_demo/README.md) for details.
+See [LINUX_HOST_TESTING.md](LINUX_HOST_TESTING.md) for comprehensive documentation on Linux host testing, including:
+- Detailed setup instructions
+- Technical background on ESP-IDF Linux target
+- Adding new tests
+- CI/CD integration
+- Troubleshooting guide
+
+For quick reference:
+- [test/host_test_linux/README.md](test/host_test_linux/README.md) - Unit test documentation
+- [demo/linux_demo/README.md](demo/linux_demo/README.md) - Demo application documentation
 
 ## Initial Setup
 
