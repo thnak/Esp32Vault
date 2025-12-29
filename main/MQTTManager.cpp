@@ -154,25 +154,44 @@ void MQTTManager::saveConfig(const std::string& server, int port, const std::str
 
 void MQTTManager::publish(const std::string& topic, const std::string& payload, bool retained) {
     if (mqttClient && connected) {
-        int msg_id = esp_mqtt_client_publish(mqttClient, topic.c_str(), 
+        // For JSON/text payloads, use MQTT5 properties with UTF-8 format indicator
+        esp_mqtt5_publish_property_config_t publish_property = {};
+        publish_property.payload_format_indicator = 1; // UTF-8
+        publish_property.content_type = CONTENT_TYPE_JSON;
+        publish_property.content_type_len = strlen(CONTENT_TYPE_JSON);
+        
+        int msg_id = esp_mqtt_client_enqueue(mqttClient, topic.c_str(), 
                                             payload.c_str(), payload.length(), 
-                                            0, retained ? 1 : 0);
-        ESP_LOGD(TAG, "Published to %s, msg_id=%d", topic.c_str(), msg_id);
+                                            0, retained ? 1 : 0, true);
+        ESP_LOGD(TAG, "Published JSON to %s, msg_id=%d", topic.c_str(), msg_id);
     }
 }
 
 void MQTTManager::publish(const std::string& topic, const uint8_t* payload, size_t length, bool retained) {
+    // Default binary publish without content type (for backward compatibility)
+    publishBinary(topic, payload, length, CONTENT_TYPE_RAW_SIGNAL, retained, 0);
+}
+
+void MQTTManager::publishBinary(const std::string& topic, const uint8_t* payload, size_t length, 
+                                 const char* contentType, bool retained, uint32_t messageExpiryInterval) {
     if (mqttClient && connected) {
-        // For MQTT5, we can set content-type property
+        // MQTT5 properties for binary payloads
         esp_mqtt5_publish_property_config_t publish_property = {};
         publish_property.payload_format_indicator = 0; // Binary
-        publish_property.content_type = "application/vnd.esp32vault.signal.raw+bin";
-        publish_property.content_type_len = strlen(publish_property.content_type);
+        publish_property.content_type = contentType;
+        publish_property.content_type_len = strlen(contentType);
         
-        int msg_id = esp_mqtt_client_publish(mqttClient, topic.c_str(), 
+        // Set message expiry interval if provided (for time-sensitive telemetry)
+        if (messageExpiryInterval > 0) {
+            publish_property.message_expiry_interval = messageExpiryInterval;
+        }
+        
+        // Use enqueue for MQTT5 with properties
+        int msg_id = esp_mqtt_client_enqueue(mqttClient, topic.c_str(), 
                                             (const char*)payload, length, 
-                                            0, retained ? 1 : 0);
-        ESP_LOGD(TAG, "Published binary to %s, msg_id=%d, len=%d", topic.c_str(), msg_id, length);
+                                            0, retained ? 1 : 0, true);
+        ESP_LOGD(TAG, "Published binary to %s, msg_id=%d, len=%zu, content-type=%s", 
+                 topic.c_str(), msg_id, length, contentType);
     }
 }
 

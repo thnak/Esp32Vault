@@ -39,7 +39,7 @@ SignalTelemetry::~SignalTelemetry() {
     }
 }
 
-void SignalTelemetry::begin(MQTTManager* mqtt, const String& macAddr) {
+void SignalTelemetry::begin(MQTTManager* mqtt, const std::string& macAddr) {
     mqttManager = mqtt;
     macAddress = macAddr;
     
@@ -53,7 +53,7 @@ void SignalTelemetry::begin(MQTTManager* mqtt, const String& macAddr) {
     // Create batch queue
     batchQueue = xQueueCreate(BATCH_QUEUE_SIZE, sizeof(RawPacket));
     if (batchQueue == nullptr) {
-        ESP_LOGI(TAG,("ERROR: Failed to create batch queue");
+        ESP_LOGE(TAG, "ERROR: Failed to create batch queue");
         return;
     }
     
@@ -68,7 +68,7 @@ void SignalTelemetry::begin(MQTTManager* mqtt, const String& macAddr) {
     );
     
     if (result != pdPASS) {
-        ESP_LOGI(TAG,("ERROR: Failed to create signal collect task");
+        ESP_LOGE(TAG, "ERROR: Failed to create signal collect task");
         return;
     }
     
@@ -83,11 +83,11 @@ void SignalTelemetry::begin(MQTTManager* mqtt, const String& macAddr) {
     );
     
     if (result != pdPASS) {
-        ESP_LOGI(TAG,("ERROR: Failed to create signal publish task");
+        ESP_LOGE(TAG, "ERROR: Failed to create signal publish task");
         return;
     }
     
-    ESP_LOGI(TAG,("SignalTelemetry initialized");
+    ESP_LOGI(TAG, "SignalTelemetry initialized");
 }
 
 void SignalTelemetry::loop() {
@@ -127,7 +127,7 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
         if (configureRMT(pin, channel)) {
             config.rmtChannel = channel;
         } else {
-            ESP_LOGI(TAG,("WARNING: RMT configuration failed for pin " + std::string(pin) + ", using ISR fallback");
+            ESP_LOGW(TAG, "WARNING: RMT configuration failed for pin %u, using ISR fallback", pin);
             config.useRMT = false;
         }
     }
@@ -140,10 +140,10 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
     
     configuredPins[pin] = config;
     
-    ESP_LOGI(TAG,("Pin " + std::string(pin) + " configured for signal telemetry");
-    ESP_LOGI(TAG,("  Raw: " + std::string(captureRaw ? "Yes" : "No"));
-    ESP_LOGI(TAG,("  Pulse: " + std::string(capturePulse ? "Yes" : "No"));
-    ESP_LOGI(TAG,("  RMT: " + std::string(config.useRMT ? "Yes" : "No"));
+    ESP_LOGI(TAG, "Pin %u configured for signal telemetry", pin);
+    ESP_LOGI(TAG, "  Raw: %s", captureRaw ? "Yes" : "No");
+    ESP_LOGI(TAG, "  Pulse: %s", capturePulse ? "Yes" : "No");
+    ESP_LOGI(TAG, "  RMT: %s", config.useRMT ? "Yes" : "No");
     
     return true;
 }
@@ -165,7 +165,7 @@ bool SignalTelemetry::removePin(uint8_t pin) {
     
     configuredPins.erase(it);
     
-    ESP_LOGI(TAG,("Pin " + std::string(pin) + " removed from signal telemetry");
+    ESP_LOGI(TAG, "Pin %u removed from signal telemetry", pin);
     return true;
 }
 
@@ -319,16 +319,16 @@ void SignalTelemetry::publishRawBatch(const RawPacket* batch) {
     }
     
     uint8_t pinId = batch->edges[0].pinId;
-    std::string topic = "raw/" + std::string(pinId);
+    std::string topic = "raw/" + std::to_string(pinId);
     
     // Calculate payload size
     size_t headerSize = sizeof(PacketHeader) + sizeof(uint64_t) + sizeof(uint32_t) + sizeof(uint8_t);
     size_t payloadSize = headerSize + (batch->count * sizeof(RawEdge));
     
-    // Publish binary payload
-    // Note: This assumes MQTTManager has been updated to support binary payloads
-    // For now, we'll create a method to publish binary data
-    mqttManager->publish(topic, (const uint8_t*)batch, payloadSize, false);
+    // Publish binary payload with MQTT5 properties
+    // Set message expiry to 60 seconds for time-sensitive telemetry
+    mqttManager->publishBinary(topic, (const uint8_t*)batch, payloadSize, 
+                              CONTENT_TYPE_RAW_SIGNAL, false, 60);
 }
 
 void SignalTelemetry::publishPulse(const PulsePacket* pulse) {
@@ -337,10 +337,12 @@ void SignalTelemetry::publishPulse(const PulsePacket* pulse) {
         return;
     }
     
-    std::string topic = "pulse/" + std::string(pulse->pinId);
+    std::string topic = "pulse/" + std::to_string(pulse->pinId);
     
-    // Publish binary pulse packet
-    mqttManager->publish(topic, (const uint8_t*)pulse, sizeof(PulsePacket), false);
+    // Publish binary pulse packet with MQTT5 properties
+    // Set message expiry to 60 seconds for time-sensitive telemetry
+    mqttManager->publishBinary(topic, (const uint8_t*)pulse, sizeof(PulsePacket), 
+                              CONTENT_TYPE_PULSE_SIGNAL, false, 60);
 }
 
 void SignalTelemetry::publishDiagnostics() {
@@ -356,13 +358,15 @@ void SignalTelemetry::publishDiagnostics() {
     diag.queueDepth = (uint16_t)uxQueueMessagesWaiting(batchQueue);
     diag.rmtOverflow = rmtOverflow;
     
-    mqttManager->publish("diag", (const uint8_t*)&diag, sizeof(DiagPacket), false);
+    // Publish binary diagnostic packet with MQTT5 properties
+    mqttManager->publishBinary("diag", (const uint8_t*)&diag, sizeof(DiagPacket), 
+                              CONTENT_TYPE_DIAG_SIGNAL, false, 0);
     
-    ESP_LOGI(TAG,("Diagnostics published:");
-    ESP_LOGI(TAG,("  Dropped Raw: " + std::string(diag.droppedRaw));
-    ESP_LOGI(TAG,("  Dropped Pulse: " + std::string(diag.droppedPulse));
-    ESP_LOGI(TAG,("  Queue Depth: " + std::string(diag.queueDepth));
-    ESP_LOGI(TAG,("  RMT Overflow: " + std::string(diag.rmtOverflow));
+    ESP_LOGI(TAG, "Diagnostics published:");
+    ESP_LOGI(TAG, "  Dropped Raw: %u", diag.droppedRaw);
+    ESP_LOGI(TAG, "  Dropped Pulse: %u", diag.droppedPulse);
+    ESP_LOGI(TAG, "  Queue Depth: %u", diag.queueDepth);
+    ESP_LOGI(TAG, "  RMT Overflow: %u", diag.rmtOverflow);
 }
 
 void SignalTelemetry::publishHeartbeat() {
@@ -370,7 +374,7 @@ void SignalTelemetry::publishHeartbeat() {
         return;
     }
     
-    std::string payload = "{\"mac\":\"" + macAddress + "\",\"seq\":" + std::string(seq) + ",\"uptime\":" + std::string(millis()/1000) + "}";
+    std::string payload = "{\"mac\":\"" + macAddress + "\",\"seq\":" + std::to_string(seq) + ",\"uptime\":" + std::to_string(millis()/1000) + "}";
     mqttManager->publish("heartbeat", payload, false);
 }
 
@@ -387,7 +391,7 @@ void SignalTelemetry::onBoot() {
     // Publish initial diagnostics
     publishDiagnostics();
     
-    ESP_LOGI(TAG,("SignalTelemetry boot sequence complete");
+    ESP_LOGI(TAG, "SignalTelemetry boot sequence complete");
 }
 
 uint32_t SignalTelemetry::getNextSeq() {
@@ -420,20 +424,20 @@ bool SignalTelemetry::configureRMT(uint8_t pin, rmt_channel_t channel) {
     
     esp_err_t err = rmt_config(&config);
     if (err != ESP_OK) {
-        ESP_LOGI(TAG,("ERROR: RMT config failed: " + std::string(err));
+        ESP_LOGE(TAG, "ERROR: RMT config failed: 0x%x", err);
         return false;
     }
     
     err = rmt_driver_install(channel, 1000, 0);
     if (err != ESP_OK) {
-        ESP_LOGI(TAG,("ERROR: RMT driver install failed: " + std::string(err));
+        ESP_LOGE(TAG, "ERROR: RMT driver install failed: 0x%x", err);
         return false;
     }
     
     // Start receiving
     err = rmt_rx_start(channel, true);
     if (err != ESP_OK) {
-        ESP_LOGI(TAG,("ERROR: RMT rx start failed: " + std::string(err));
+        ESP_LOGE(TAG, "ERROR: RMT rx start failed: 0x%x", err);
         rmt_driver_uninstall(channel);
         return false;
     }

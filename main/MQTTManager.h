@@ -10,6 +10,12 @@
 
 typedef std::function<void(std::string topic, std::string payload, size_t payloadLen)> MQTTCallback;
 
+// MQTT5 Content Types for Signal Telemetry
+#define CONTENT_TYPE_RAW_SIGNAL    "application/vnd.esp32vault.signal.raw+bin"
+#define CONTENT_TYPE_PULSE_SIGNAL  "application/vnd.esp32vault.signal.pulse+bin"
+#define CONTENT_TYPE_DIAG_SIGNAL   "application/vnd.esp32vault.signal.diag+bin"
+#define CONTENT_TYPE_JSON          "application/json"
+
 class MQTTManager {
 private:
     esp_mqtt_client_handle_t mqttClient;
@@ -46,6 +52,8 @@ public:
     
     void publish(const std::string& topic, const std::string& payload, bool retained = false);
     void publish(const std::string& topic, const uint8_t* payload, size_t length, bool retained = false);
+    void publishBinary(const std::string& topic, const uint8_t* payload, size_t length, 
+                       const char* contentType, bool retained = false, uint32_t messageExpiryInterval = 0);
     void subscribe(const std::string& topic);
     
     void publishStatus(const std::string& status);
