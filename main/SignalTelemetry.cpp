@@ -113,8 +113,8 @@ bool SignalTelemetry::configurePin(uint8_t pin, bool captureRaw, bool capturePul
     config.captureRaw = captureRaw;
     config.capturePulse = capturePulse;
     config.useRMT = useRMT;
-    config.rawTopic = "raw/" + std::string(pin);
-    config.pulseTopic = "pulse/" + std::string(pin);
+    config.rawTopic = "raw/" + std::to_string(pin);
+    config.pulseTopic = "pulse/" + std::to_string(pin);
     
     // Configure hardware
     pinMode(pin, INPUT);

@@ -189,7 +189,8 @@ void MQTTManager::publishBinary(const std::string& topic, const uint8_t* payload
         publish_property.content_type = contentType;
         publish_property.content_type_len = strlen(contentType);
         
-        // Set message expiry interval if provided (for time-sensitive telemetry)
+        // Set message expiry interval if provided
+        // messageExpiryInterval=0 means no expiry (message persists indefinitely)
         if (messageExpiryInterval > 0) {
             publish_property.message_expiry_interval = messageExpiryInterval;
         }
