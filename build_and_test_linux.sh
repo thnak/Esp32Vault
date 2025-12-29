@@ -24,7 +24,8 @@ fi
 # Build tests
 echo "Building tests..."
 if [ "$USE_DOCKER" = true ]; then
-    docker run --rm -v "$SCRIPT_DIR":/project -w /project/test/host_test_linux \
+    # Use absolute path but ensure it's within project directory for security
+    docker run --rm -v "$SCRIPT_DIR":/project:ro -v "$TEST_DIR":/project/test/host_test_linux -w /project/test/host_test_linux \
         espressif/idf:release-v5.4 \
         bash -c "idf.py --preview set-target linux && idf.py build"
 else
