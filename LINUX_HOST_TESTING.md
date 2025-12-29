@@ -7,7 +7,8 @@ ESP32 Vault includes experimental support for Linux host testing using ESP-IDF v
 The Linux host testing support includes:
 
 1. **Unit Tests** (`test/host_test_linux/`) - Tests for core data structures and packet serialization
-2. **Demo Application** (`demo/linux_demo/`) - Interactive demonstration of signal telemetry packet formats
+2. **End-to-End Integration Tests** (`test/e2e_test_linux/`) - Tests for complete signal capture, MQTT, and buffer workflows
+3. **Demo Application** (`demo/linux_demo/`) - Interactive demonstration of signal telemetry packet formats
 
 ## Quick Start
 
@@ -20,13 +21,14 @@ The Linux host testing support includes:
 
 ```bash
 # From repository root
+
+# Run unit tests
 ./build_and_test_linux.sh
-```
 
-### Running Demo (Using Docker)
+# Run end-to-end integration tests
+./build_and_run_e2e_linux.sh
 
-```bash
-# From repository root
+# Run demo
 ./build_and_run_demo_linux.sh
 ```
 
@@ -43,6 +45,18 @@ The unit tests verify:
 - **Buffer Operations**: Tests circular buffer write/read operations and overflow handling
 
 All tests use the Unity testing framework included with ESP-IDF.
+
+### End-to-End Integration Tests
+
+The E2E tests simulate complete workflows:
+
+- **Signal Generation**: Mock GPIO pin state changes and signal events
+- **MQTT Operations**: Mock broker with publish/subscribe functionality  
+- **PSRAM Buffer Pressure**: Simulates high-rate events and buffer overflow scenarios
+- **Reconnection Scenarios**: Tests offline buffering and replay on connection restore
+- **Mixed Signal Types**: Tests handling of both raw edge and pulse width packets
+
+**Note**: E2E tests build successfully but have runtime limitations due to FreeRTOS scheduler initialization on Linux (experimental ESP-IDF feature limitation).
 
 ### Demo Application
 
@@ -289,15 +303,18 @@ You can integrate these tests into your CI/CD pipeline:
 
 Potential improvements:
 
+- Resolve FreeRTOS scheduler initialization issue for E2E tests on Linux
 - Add tests for WiFiManager logic
 - Add tests for MQTTManager message handling
 - Add tests for OTA update validation
 - Increase test coverage
 - Add performance benchmarks
 - Integration with code coverage tools
+- CI/CD workflow examples for all test types
 
 ## References
 
 - [ESP-IDF Linux Target Documentation](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/linux-host-testing.html)
 - [Unity Test Framework](https://github.com/ThrowTheSwitch/Unity)
 - [ESP32 Vault Signal Telemetry Documentation](SIGNAL_TELEMETRY.md)
+- [End-to-End Test Documentation](test/e2e_test_linux/README.md)
