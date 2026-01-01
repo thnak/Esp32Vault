@@ -123,8 +123,9 @@ extern "C" void app_main(void)
             mqttManager.loop();
             
             // Trigger MQTT reconnection if disconnected and interval has passed
-            // Note: This check runs every loop (10ms) but reconnection only triggers
-            // every MQTT_RECONNECT_INTERVAL (5 seconds) to avoid excessive reconnection attempts
+            // Note: This check runs every loop iteration (vTaskDelay of 10ms at end of loop)
+            // but reconnection only triggers every MQTT_RECONNECT_INTERVAL (5 seconds)
+            // to avoid excessive reconnection attempts
             if (!mqttManager.isConnected() && (now - lastMQTTReconnectAttempt > MQTT_RECONNECT_INTERVAL)) {
                 ESP_LOGI(TAG, "MQTT disconnected, attempting reconnection");
                 mqttManager.reconnect();
