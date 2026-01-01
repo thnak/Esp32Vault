@@ -62,12 +62,14 @@ void TestSeeder::seederTaskFunction(void* parameter) {
 }
 
 void TestSeeder::generateAndPublishData() {
-    if (!mqttManager || !mqttManager->isConnected()) {
-        ESP_LOGD(TAG, "MQTT not connected, skipping iteration %lu", iteration);
+    if (!mqttManager) {
+        ESP_LOGW(TAG, "MQTT manager not initialized, skipping iteration %u", iteration);
         return;
     }
     
-    ESP_LOGI(TAG, "Seeding test data - iteration %lu", iteration);
+    // Always attempt to publish - MQTT client will queue messages if not connected
+    ESP_LOGI(TAG, "Seeding test data - iteration %u (MQTT connected: %d)", 
+             iteration, mqttManager->isConnected());
     
     // Publish all telemetry types
     publishRawPacket();

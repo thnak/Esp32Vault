@@ -212,7 +212,7 @@ void MQTTManager::saveConfig(const std::string& server, int port, const std::str
 }
 
 void MQTTManager::publish(const std::string& topic, const std::string& payload, bool retained) {
-    if (mqttClient && connected) {
+    if (mqttClient) {
         // For JSON/text payloads, use MQTT5 properties with UTF-8 format indicator
         esp_mqtt5_publish_property_config_t publish_property = {};
         publish_property.payload_format_indicator = 1; // UTF-8
@@ -222,11 +222,12 @@ void MQTTManager::publish(const std::string& topic, const std::string& payload, 
         esp_mqtt5_client_set_publish_property(mqttClient, &publish_property);
         
         // Enqueue with store=true to ensure delivery even if offline
+        // esp_mqtt_client_enqueue will queue messages even when not connected
         int msg_id = esp_mqtt_client_enqueue(mqttClient, topic.c_str(), 
                                             payload.c_str(), payload.length(), 
                                             0, retained ? 1 : 0, true);
         
-        ESP_LOGD(TAG, "Published JSON to %s, msg_id=%d", topic.c_str(), msg_id);
+        ESP_LOGD(TAG, "Published JSON to %s, msg_id=%d, connected=%d", topic.c_str(), msg_id, connected);
     }
 }
 
@@ -237,7 +238,7 @@ void MQTTManager::publish(const std::string& topic, const uint8_t* payload, size
 
 void MQTTManager::publishBinary(const std::string& topic, const uint8_t* payload, size_t length, 
                                  const char* contentType, bool retained, uint32_t messageExpiryInterval) {
-    if (mqttClient && connected) {
+    if (mqttClient) {
         // MQTT5 properties for binary payloads
         esp_mqtt5_publish_property_config_t publish_property = {};
         publish_property.payload_format_indicator = 0; // Binary
@@ -253,12 +254,13 @@ void MQTTManager::publishBinary(const std::string& topic, const uint8_t* payload
         esp_mqtt5_client_set_publish_property(mqttClient, &publish_property);
         
         // Enqueue with store=true to ensure delivery even if offline
+        // esp_mqtt_client_enqueue will queue messages even when not connected
         int msg_id = esp_mqtt_client_enqueue(mqttClient, topic.c_str(), 
                                             (const char*)payload, length, 
                                             0, retained ? 1 : 0, true);
         
-        ESP_LOGD(TAG, "Published binary to %s, msg_id=%d, len=%zu, content-type=%s", 
-                 topic.c_str(), msg_id, length, contentType);
+        ESP_LOGD(TAG, "Published binary to %s, msg_id=%d, len=%zu, content-type=%s, connected=%d", 
+                 topic.c_str(), msg_id, length, contentType, connected);
     }
 }
 
