@@ -41,7 +41,7 @@ ESP32 Vault captures all signal changes with maximum accuracy and minimal proces
 - **Message Expiry**: Time-sensitive telemetry expires after 60 seconds
 - **Binary & Text Support**: Supports both binary signal data and JSON commands
 - **Payload Format Indicator**: Proper binary (0) and UTF-8 (1) format indicators
-- **Auto-reconnection**: Automatic reconnection to MQTT broker with configurable retry intervals (10-second timeout, 5-second retry interval in main loop)
+- **Auto-reconnection**: Automatic reconnection to MQTT broker (10-second timeout, 5-second retry interval in main loop)
 - **Resilient Connection**: Monitors connection state and triggers reconnection on WiFi recovery
 - **Dynamic Configuration**: MQTT settings can be configured via MQTT messages
 - **MAC-based Client ID**: Uses device MAC address as MQTT client ID

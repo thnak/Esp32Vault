@@ -121,10 +121,18 @@ bool MQTTManager::isConnected() {
 }
 
 void MQTTManager::reconnect() {
-    if (mqttClient && !connected) {
-        ESP_LOGI(TAG, "Manually triggering MQTT reconnection...");
-        esp_mqtt_client_reconnect(mqttClient);
+    if (!mqttClient) {
+        ESP_LOGW(TAG, "Cannot reconnect: MQTT client not initialized");
+        return;
     }
+    
+    if (connected) {
+        ESP_LOGD(TAG, "MQTT already connected, skipping reconnection");
+        return;
+    }
+    
+    ESP_LOGI(TAG, "Manually triggering MQTT reconnection...");
+    esp_mqtt_client_reconnect(mqttClient);
 }
 
 void MQTTManager::setCallback(MQTTCallback callback) {

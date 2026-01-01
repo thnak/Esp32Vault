@@ -180,7 +180,8 @@ void WiFiManager::handleWiFiEvent(esp_event_base_t event_base, int32_t event_id,
         connected = false;
         retryCount++;
         
-        if (MAX_RETRY_COUNT < 0 || retryCount <= MAX_RETRY_COUNT) {
+        // Check if we should retry (infinite if MAX_RETRY_COUNT == -1)
+        if (MAX_RETRY_COUNT == -1 || retryCount <= MAX_RETRY_COUNT) {
             ESP_LOGI(TAG, "Disconnected from WiFi, reconnecting... (attempt %d)", retryCount);
             esp_wifi_connect();
         } else {
