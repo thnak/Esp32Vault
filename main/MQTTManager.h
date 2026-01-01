@@ -45,6 +45,7 @@ public:
     void begin();
     void loop();
     bool isConnected();
+    void reconnect(); // Manually trigger reconnection
     
     void setCallback(MQTTCallback callback);
     void setServer(const std::string& server, int port);

@@ -9,7 +9,7 @@ static const char *TAG = "WiFiManager";
 #define DEFAULT_SSID "EspSetup"
 #define DEFAULT_PASSWORD "HeLooWod"
 
-WiFiManager::WiFiManager() : nvsHandle(0), connected(false) {
+WiFiManager::WiFiManager() : nvsHandle(0), connected(false), retryCount(0) {
 }
 
 WiFiManager::~WiFiManager() {
@@ -174,14 +174,23 @@ void WiFiManager::ip_event_handler(void* arg, esp_event_base_t event_base,
 void WiFiManager::handleWiFiEvent(esp_event_base_t event_base, int32_t event_id, void* event_data) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         ESP_LOGI(TAG, "WiFi started, connecting...");
+        retryCount = 0;
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        ESP_LOGI(TAG, "Disconnected from WiFi, reconnecting...");
         connected = false;
-        esp_wifi_connect();
+        retryCount++;
+        
+        // Check if we should retry (infinite if MAX_RETRY_COUNT == -1)
+        if (MAX_RETRY_COUNT == -1 || retryCount <= MAX_RETRY_COUNT) {
+            ESP_LOGI(TAG, "Disconnected from WiFi, reconnecting... (attempt %d)", retryCount);
+            esp_wifi_connect();
+        } else {
+            ESP_LOGE(TAG, "Max retry count reached, stopping reconnection attempts");
+        }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
         connected = true;
+        retryCount = 0; // Reset retry count on successful connection
     }
 }

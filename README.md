@@ -31,6 +31,7 @@ ESP32 Vault captures all signal changes with maximum accuracy and minimal proces
 ### 2. WiFi Management
 - **Automatic Connection**: Connects to saved WiFi credentials on startup
 - **Default Hotspot Provisioning**: If no credentials exist or connection fails, device connects to predefined hotspot (SSID: `EspSetup`, Password: `HeLooWod`)
+- **Infinite Retry**: Automatically retries WiFi connection indefinitely until successful
 - **MQTT-based Configuration**: Configure WiFi credentials via MQTT commands
 - **Persistent Storage**: WiFi credentials stored in ESP32 preferences
 
@@ -40,7 +41,8 @@ ESP32 Vault captures all signal changes with maximum accuracy and minimal proces
 - **Message Expiry**: Time-sensitive telemetry expires after 60 seconds
 - **Binary & Text Support**: Supports both binary signal data and JSON commands
 - **Payload Format Indicator**: Proper binary (0) and UTF-8 (1) format indicators
-- **Auto-reconnection**: Automatic reconnection to MQTT broker
+- **Auto-reconnection**: Automatic reconnection to MQTT broker (10-second timeout, 5-second retry interval in main loop)
+- **Resilient Connection**: Monitors connection state and triggers reconnection on WiFi recovery
 - **Dynamic Configuration**: MQTT settings can be configured via MQTT messages
 - **MAC-based Client ID**: Uses device MAC address as MQTT client ID
 - **Topic Structure**: 

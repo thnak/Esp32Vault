@@ -40,6 +40,11 @@ const unsigned long STATUS_INTERVAL = 30000; // 30 seconds
 unsigned long lastHeartbeat = 0;
 const unsigned long HEARTBEAT_INTERVAL = 30000; // 30 seconds
 
+// Connection state tracking
+bool wasWiFiConnected = false;
+unsigned long lastMQTTReconnectAttempt = 0;
+const unsigned long MQTT_RECONNECT_INTERVAL = 5000; // 5 seconds
+
 void handleMQTTMessage(std::string topic, std::string payload, size_t payloadLen);
 void publishDeviceInfo();
 void publishOTAStatus(const std::string& status);
@@ -103,14 +108,34 @@ extern "C" void app_main(void)
         // Handle managers
         wifiManager.loop();
         
+        unsigned long now = millis();
+        bool wifiConnected = wifiManager.isConnected();
+        
+        // Detect WiFi reconnection
+        if (wifiConnected && !wasWiFiConnected) {
+            ESP_LOGI(TAG, "WiFi reconnected, triggering MQTT reconnection if needed");
+            lastMQTTReconnectAttempt = 0; // Reset to allow immediate reconnection
+        }
+        wasWiFiConnected = wifiConnected;
+        
         // Only run MQTT if WiFi is connected
-        if (wifiManager.isConnected()) {
+        if (wifiConnected) {
             mqttManager.loop();
+            
+            // Trigger MQTT reconnection if disconnected and interval has passed
+            // Note: This check runs every loop iteration (vTaskDelay of 10ms at end of loop)
+            // but reconnection only triggers every MQTT_RECONNECT_INTERVAL (5 seconds)
+            // to avoid excessive reconnection attempts
+            if (!mqttManager.isConnected() && (now - lastMQTTReconnectAttempt > MQTT_RECONNECT_INTERVAL)) {
+                ESP_LOGI(TAG, "MQTT disconnected, attempting reconnection");
+                mqttManager.reconnect();
+                lastMQTTReconnectAttempt = now;
+            }
+            
             otaManager.loop();
             signalTelemetry.loop();
             
             // Periodic status update
-            unsigned long now = millis();
             if (now - lastStatusUpdate > STATUS_INTERVAL) {
                 lastStatusUpdate = now;
                 publishDeviceInfo();

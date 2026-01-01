@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **WiFi and MQTT Connection Retry Logic**: Enhanced automatic reconnection reliability
+  - WiFi: Implemented infinite retry attempts with retry count logging
+  - WiFi: Reset retry count on successful connection
+  - MQTT: Added explicit network timeout configuration (10 seconds)
+  - MQTT: Configured automatic reconnection with 10-second interval
+  - MQTT: Added manual reconnection trigger in main loop (5-second interval)
+  - Main loop: Added WiFi state tracking to trigger MQTT reconnection on WiFi recovery
+  - Ensures continuous reconnection attempts if connection is interrupted
+  
 - **MQTT URI Parsing**: Fixed "Error parse uri" when configuring MQTT broker with IP address or hostname
   - Automatically adds `mqtt://` or `mqtts://` scheme prefix to server address
   - Detects and preserves existing URI schemes to avoid double-prefixing

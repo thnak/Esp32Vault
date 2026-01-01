@@ -15,6 +15,10 @@ private:
     std::string ssid;
     std::string password;
     
+    int retryCount;
+    // MAX_RETRY_COUNT: -1 for infinite retries, or set to positive number for limited retries
+    static const int MAX_RETRY_COUNT = -1;
+    
     static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                    int32_t event_id, void* event_data);
     static void ip_event_handler(void* arg, esp_event_base_t event_base,
