@@ -77,6 +77,12 @@ void MQTTManager::begin() {
         mqtt_cfg.session.keepalive = 60;
         mqtt_cfg.session.disable_clean_session = false; // Clean start
         
+        // Network timeout and reconnection settings
+        mqtt_cfg.network.timeout_ms = 10000; // 10 seconds timeout for network operations
+        mqtt_cfg.network.refresh_connection_after_ms = 0; // Disable periodic refresh
+        mqtt_cfg.network.disable_auto_reconnect = false; // Enable automatic reconnection
+        mqtt_cfg.network.reconnect_timeout_ms = 10000; // Wait 10 seconds before reconnecting
+        
         if (!mqttUser.empty()) {
             mqtt_cfg.credentials.username = mqttUser.c_str();
             mqtt_cfg.credentials.authentication.password = mqttPassword.c_str();
@@ -112,6 +118,13 @@ void MQTTManager::loop() {
 
 bool MQTTManager::isConnected() {
     return connected;
+}
+
+void MQTTManager::reconnect() {
+    if (mqttClient && !connected) {
+        ESP_LOGI(TAG, "Manually triggering MQTT reconnection...");
+        esp_mqtt_client_reconnect(mqttClient);
+    }
 }
 
 void MQTTManager::setCallback(MQTTCallback callback) {
